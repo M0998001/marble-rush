@@ -1,60 +1,61 @@
 # Marble Rush 3D 🟡🔵🔴
 
-A shared-device 3D marble racing game for iPhone, iPad, and desktop browsers. **Up to six players** choose their marbles, then watch a fresh obstacle course play out.
+A shared-screen, arcade-style **3D marble racing game** built for mobile Safari, iPads and desktop browsers. Set up **2–6 marbles** on one device and watch the obstacles determine the winner.
 
-## ▶️ Play now
+### ▶️ Play
 
-**[Play Marble Rush 3D](https://m0998001.github.io/marble-rush/?v=3)**
+**[Play Marble Rush 3D](https://m0998001.github.io/marble-rush/?v=4)**
 
-Choose **Start Racing**, select a mode, set 2–6 players, choose marble skins, and launch. This is a browser game: people you share the link with can play their *own local races* on their devices; it is not online multiplayer.
+No account or installation required. Each visitor plays a local session on their own device; the link does not connect friends into one online race.
 
-## Game modes
+## What's new in v0.3
 
-- **Free for All:** first marble to reach the finish wins.
-- **Team Battle:** choose 2–4 teams. Team averages reward strong finishes even with uneven team sizes.
-- **Pachinko Palace:** marbles fall through staggered peg fields. End slots score **100 / 250 / 500 / 1,000 / 500 / 250 / 100**. The highest score wins; fastest time breaks a tie.
+- **Curved courses:** Tracks now follow smooth, randomized, 3D S-bends. Cameras, guardrails, scenery, ramps and marbles follow the same track coordinates, not just a straight slope.
+- **Real tunnel passages:** Funnel Frenzy and other later stages include tunnels with continuous side walls, overhead roof bands, arched ribs, and navigable entrances/exits. A dedicated **Tunnel Twister** course is free to try.
+- **Active edge obstacles:** More bumpers mounted to the outside rail, plus short angled deflectors, so marbles encounter meaningful side-of-track interactions without being pinned against a wall.
+- **Additional obstacles:** Moving spinner arms, short launch pads that send marbles on visible arcs, contoured hill ramps, booster plates, spring bumpers, and two-row peg slaloms.
+- **Safer vortex bowls:** Formerly closed, trapping rings now have matching open curved walls with upstream and downstream gaps.
+- **More complete courses:** A shallow start ridge gives each marble early contact, while hand-spaced slalom sections prevent consistently straight, obstacle-free lanes.
+- **Mobile optimization:** Reduced WebGL pixel ratio and camera-based object culling for more practical phone performance.
 
-## Course collection
+Previously added in v0.2: **2–6-player limit**, **Pachinko mode**, increased course diversity, gradual stuck recovery instead of teleporting marbles, and additional materials/scenery.
 
-| Course | Coins | Theme |
-| --- | ---: | --- |
-| Pegboard Paradise | Free | Carnival pegs, splitters, bumpers |
-| Funnel Frenzy | 300 | Solid vortex rims and spinning fans |
-| Factory Frenzy | 800 | Metal sweepers, boosters and spring bumpers |
-| Cosmic Chaos | 1,500 | Magnetic attractors and neon scenery |
-| Jungle Jumble | 2,000 | Jungle canopy and mossy slalom fields |
-| Glacier Glide | 2,500 | Icy skid patches and frozen pillars |
-| Magma Mayhem | 3,200 | Volcanic towers and spring launchers |
-| Coral Cove | 4,000 | Undersea bubbles, coral and flowing rings |
+## Modes
 
-Pachinko Palace is a **free game mode**, not a purchasable course.
+- **Free for All** — First marble to the finish wins.
+- **Teams** — Choose 2–4 teams; team average finishing points decide the winner.
+- **Pachinko Palace** — Marbles fall through a dense peg board into seven point slots (100 / 250 / 500 / 1000 / 500 / 250 / 100). Highest score wins, with finishing time as the tie-breaker.
 
-## What changed in v0.2
+## Available racing themes
 
-- Reduced the maximum player count from 16 to **6**.
-- Rebuilt problematic splitters as short chevrons; matched rotating-arm direction to their physics.
-- Made visible vortex rims solid, and introduced matching collision shapes for new bumpers and springs.
-- Removed the former stuck-marble **forward teleport**. Instead, marbles get gradual steering and acceleration to escape jams.
-- Added **Pachinko mode**, seven score bins, and a results screen ranked by points.
-- Added **four unlockable stage families** with separate decorations and obstacle libraries.
-- Added subtle contact plinks and new scenic structures.
+| Course | Coin price | Highlights |
+|---|---:|---|
+| Pegboard Paradise | Free | Curved carnival board, side bumpers and staggered pegs |
+| Tunnel Twister | Free | Covered tunnels, narrow inside walls, curved corners and launch pads |
+| Funnel Frenzy | 300 | Funnel-like open bowl arcs, spinning obstacles and enclosed tunnels |
+| Factory Frenzy | 800 | Spinner arms, spring bumpers and ramp launchers |
+| Cosmic Chaos | 1,500 | Magnetic obstacles, neon tunnel corridors and high-speed jumps |
+| Jungle Jumble | 2,000 | Tropical ramps, foliage and offset peg fields |
+| Glacier Glide | 2,500 | Sliding patches, crystalline scenery and ice tunnels |
+| Magma Mayhem | 3,200 | Volcanic jump pads, spring bumpers and slaloms |
+| Coral Cove | 4,000 | Reef-themed obstacles, currents and underwater tunnels |
 
-### Testing
+Pachinko is a free **game mode**, separate from the nine racing courses. Existing players automatically get Tunnel Twister unlocked, without losing coins or previously unlocked content.
 
-The new simulation has completed **324 seeded tests** across nine play environments and three race lengths (all six marbles finished in those tests), plus later regression passes. It has **not** yet been fully profiled on physical iPhones or iPads; visual/physics polish and edge cases may remain.
+## Controls
 
-## Controls and progression
+Use **Start Racing**, choose a mode and 2–6 players, customize marbles, then preview or regenerate the course. During the race, drag the screen to orbit the camera, pinch/scroll to zoom, or tap a leaderboard name to follow a marble.
 
-- Camera follows the pack automatically. **Drag** to orbit, **pinch/scroll** to zoom, or **tap a leaderboard name** to follow a competitor.
-- Earn coins and unlock courses and cosmetic marble skins. Marble appearance does not affect physics.
-- Coins, unlocks, and records are stored **locally in your browser on each device**. Clearing site data can reset progression.
+Marble cosmetics never affect racing performance. Earnable coins, unlocks and results are stored locally in the browser on that device; clearing site storage may erase them.
 
-## Running or deploying
+## Testing and limitations
 
-The site is a static, dependency-free WebGL + JavaScript app: **[index.html](index.html)** is all that GitHub Pages needs. In repository **Settings → Pages**, publish the `main` branch from `/(root)`. For a local desktop preview, open `index.html` in a recent browser.
+Before this release, **1,500 simulated races** passed across the modes, nine tracks plus Pachinko, course lengths and 2–6 competitors, with no unfinished marbles in that run. A separate render/UI smoke test passed for all ten environments. These are automated simulation tests, **not** verification on an actual iPhone or iPad.
 
-## Prototype limitations
+This is still a lightweight JavaScript/WebGL prototype with **lane-constrained physics rendered in 3D**, not a production Unity rigid-body project. Tunnel arches use open skylight cutaways to keep racers visible. Large curved ramps and launch animations are simplified, not fully realistic 3D ballistics.
 
-The game uses a custom lightweight WebGL renderer and plane-constrained marble physics presented in 3D, not a production Unity build with full rigid-body interactions. Some power-up graphics are painted floor decals or non-solid force fields rather than physical walls. Sharing the link does **not** create a cross-device multiplayer session.
+## GitHub Pages
 
-_The project is currently distributed without a license; all rights remain with the repository owner._
+This game is static: the repository-root [index.html](index.html) serves the entire experience. In **Settings → Pages** set **Deploy from a branch → main → /(root)**. GitHub Pages publishes pushes to main automatically.
+
+_No software license has been added; rights remain with the repository owner._

@@ -36,7 +36,7 @@ jungle:{track:'#376d50',rail:'#85dd8c',trim:'#ffd268',peg:'#e79c58',floor:'#183a
 glacier:{track:'#66aeca',rail:'#dcf7ff',trim:'#9ff9f7',peg:'#abdde7',floor:'#244f69',sky:[.038,.09,.15]},
 volcano:{track:'#593940',rail:'#ff9954',trim:'#ffe064',peg:'#ff684b',floor:'#281e2c',sky:[.13,.042,.052]},
 reef:{track:'#2c8c96',rail:'#90e6e1',trim:'#efbbd7',peg:'#ff9c93',floor:'#124456',sky:[.022,.09,.14]},
-pachinko:{track:'#31456f',rail:'#ffc779',trim:'#fff0ae',peg:'#fcae61',floor:'#1b2545',sky:[.065,.052,.13]}
+pachinko:{track:'#31456f',rail:'#ffc779',trim:'#fff0ae',peg:'#fcae61',floor:'#1b2545',sky:[.065,.052,.13]},tunnel:{track:'#475b82',rail:'#c8eeff',trim:'#fbca76',peg:'#ffa4c9',floor:'#1b274a',sky:[.034,.042,.096]}
 };
 function rgb(hex){let s=hex.replace('#','');return [parseInt(s.slice(0,2),16)/255,parseInt(s.slice(2,4),16)/255,parseInt(s.slice(4,6),16)/255]}
 class Renderer{
@@ -44,7 +44,7 @@ constructor(canvas){this.canvas=canvas;const gl=canvas.getContext('webgl',{antia
 init(){const gl=this.gl,precision=(gl.getShaderPrecisionFormat(gl.FRAGMENT_SHADER,gl.HIGH_FLOAT)?.precision||0)>0?'highp':'mediump',vs=`precision ${precision} float;attribute vec3 aPos;attribute vec3 aNor;uniform mat4 uModel;uniform mat4 uVP;uniform vec3 uScale;uniform vec3 uCam;varying vec3 vN;varying vec3 vW;varying float vDist;void main(){vec4 w=uModel*vec4(aPos,1.0);vW=w.xyz;vN=normalize(mat3(uModel)*(aNor/uScale));vDist=distance(w.xyz,uCam);gl_Position=uVP*w;}`,fs=`precision ${precision} float;varying vec3 vN;varying vec3 vW;varying float vDist;uniform vec3 uColor;uniform vec3 uCam;uniform vec3 uFog;uniform float uGloss;uniform float uGlow;void main(){vec3 n=normalize(vN);vec3 light=normalize(vec3(-.43,.9,-.28));float d=max(dot(n,light),0.0);vec3 view=normalize(uCam-vW);vec3 h=normalize(light+view);float spec=pow(max(dot(n,h),0.0),uGloss>0.5?50.0:15.0)*(uGloss>0.5?.8:.23);vec3 c=uColor*(.31+.68*d)+vec3(spec)+uColor*uGlow*.4;float fog=clamp((vDist-57.0)/185.0,0.0,.78);c=mix(c,uFog,fog);gl_FragColor=vec4(c,1.0);}`;
 const compile=(type,source)=>{let s=gl.createShader(type);gl.shaderSource(s,source);gl.compileShader(s);if(!gl.getShaderParameter(s,gl.COMPILE_STATUS))throw Error(gl.getShaderInfoLog(s));return s};let prog=gl.createProgram();gl.attachShader(prog,compile(gl.VERTEX_SHADER,vs));gl.attachShader(prog,compile(gl.FRAGMENT_SHADER,fs));gl.linkProgram(prog);if(!gl.getProgramParameter(prog,gl.LINK_STATUS))throw Error(gl.getProgramInfoLog(prog));gl.useProgram(prog);this.program=prog;this.attr={pos:gl.getAttribLocation(prog,'aPos'),nor:gl.getAttribLocation(prog,'aNor')};this.uniform={model:gl.getUniformLocation(prog,'uModel'),vp:gl.getUniformLocation(prog,'uVP'),scale:gl.getUniformLocation(prog,'uScale'),cam:gl.getUniformLocation(prog,'uCam'),color:gl.getUniformLocation(prog,'uColor'),fog:gl.getUniformLocation(prog,'uFog'),gloss:gl.getUniformLocation(prog,'uGloss'),glow:gl.getUniformLocation(prog,'uGlow')};this.meshes={box:this.upload(boxMesh()),sphere:this.upload(sphereMesh()),cylinder:this.upload(cylinderMesh()),torus:this.upload(torusMesh())};gl.enable(gl.DEPTH_TEST);gl.enable(gl.CULL_FACE);gl.cullFace(gl.BACK);gl.clearDepth(1);}
 upload(data){let gl=this.gl;let b={count:data.idx.length};b.pos=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,b.pos);gl.bufferData(gl.ARRAY_BUFFER,data.pos,gl.STATIC_DRAW);b.nrm=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,b.nrm);gl.bufferData(gl.ARRAY_BUFFER,data.nrm,gl.STATIC_DRAW);b.idx=gl.createBuffer();gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,b.idx);gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,data.idx,gl.STATIC_DRAW);return b}
-resize(){let c=this.canvas,dpr=Math.min(devicePixelRatio||1,2),w=Math.max(1,Math.floor(c.clientWidth*dpr)),h=Math.max(1,Math.floor(c.clientHeight*dpr));if(c.width!==w||c.height!==h){c.width=w;c.height=h;this.gl.viewport(0,0,w,h)}}
+resize(){let c=this.canvas,dpr=Math.min(devicePixelRatio||1,c.clientWidth<760?1.45:1.85),w=Math.max(1,Math.floor(c.clientWidth*dpr)),h=Math.max(1,Math.floor(c.clientHeight*dpr));if(c.width!==w||c.height!==h){c.width=w;c.height=h;this.gl.viewport(0,0,w,h)}}
 model(x,y,z,sx=1,sy=1,sz=1,rotY=0,rotX=0,rotZ=0){let m=translate(x,y,z);if(rotY)m=mm(m,ry(rotY));if(rotX)m=mm(m,rx(rotX));if(rotZ)m=mm(m,rz(rotZ));return mm(m,scale(sx,sy,sz))}
 draw(mesh,m,color,dim=[1,1,1],gloss=0,glow=0){const gl=this.gl,u=this.uniform,a=this.attr,b=this.meshes[mesh];gl.bindBuffer(gl.ARRAY_BUFFER,b.pos);gl.enableVertexAttribArray(a.pos);gl.vertexAttribPointer(a.pos,3,gl.FLOAT,false,0,0);gl.bindBuffer(gl.ARRAY_BUFFER,b.nrm);gl.enableVertexAttribArray(a.nor);gl.vertexAttribPointer(a.nor,3,gl.FLOAT,false,0,0);gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,b.idx);gl.uniformMatrix4fv(u.model,false,m);gl.uniform3fv(u.scale,dim);gl.uniform3fv(u.color,typeof color==='string'?rgb(color):color);gl.uniform1f(u.gloss,gloss);gl.uniform1f(u.glow,glow);gl.drawElements(gl.TRIANGLES,b.count,gl.UNSIGNED_SHORT,0)}
 box(x,y,z,w,h,l,color,rotY=0,rotX=0,rotZ=0,glow=0){if(this.drawPath){const pt=this.drawPath.toWorld(x,z);rotY+=this.drawPath.heading(z);x=pt[0];z=pt[1]}this.draw('box',this.model(x,y,z,w,h,l,rotY,rotX,rotZ),color,[w,h,l],0,glow)}
@@ -54,14 +54,15 @@ torus(x,y,z,r,color,glow=1){if(this.drawPath){let pt=this.drawPath.toWorld(x,z);
 setWorld(world){this.world=world}
 setMode(mode,id=null){this.cameraMode=mode;this.focusId=id}
 bindPointer(){let c=this.canvas;this.pinchDistance=0;c.addEventListener('pointerdown',e=>{this.pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});try{c.setPointerCapture(e.pointerId)}catch(err){}if(this.pointers.size===2){let pts=[...this.pointers.values()];this.pinchDistance=Math.hypot(pts[0].x-pts[1].x,pts[0].y-pts[1].y)}});c.addEventListener('pointermove',e=>{let p=this.pointers.get(e.pointerId);if(!p)return;let dx=e.clientX-p.x,dy=e.clientY-p.y;this.pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});if(this.pointers.size>=2){let pts=[...this.pointers.values()],distance=Math.hypot(pts[0].x-pts[1].x,pts[0].y-pts[1].y);if(this.pinchDistance>0&&distance>1)this.zoom=clamp(this.zoom*this.pinchDistance/distance,.55,2.25);this.pinchDistance=distance;return}if(Math.abs(dx)+Math.abs(dy)>.1){this.cameraMode='orbit';this.orbitAngle=clamp(this.orbitAngle+dx*.007,-1.65,1.65);this.pitch=clamp(this.pitch+dy*.005,.24,1.32)}});for(let ev of ['pointerup','pointercancel'])c.addEventListener(ev,e=>{this.pointers.delete(e.pointerId);this.pinchDistance=0});c.addEventListener('wheel',e=>{this.zoom=clamp(this.zoom+e.deltaY*.001,.55,2.25);e.preventDefault()},{passive:false})}
-updateCamera(world,dt,home){let alive=world.marbles.filter(b=>!b.finished),ordered=[...alive].sort((a,b)=>b.z-a.z);let target=ordered[Math.floor(Math.max(0,ordered.length-1)*.46)]||world.marbles[0];if(this.focusId!==null){let f=world.marbles.find(b=>b.id===this.focusId);if(f&&!f.finished)target=f}let tz=home?Math.min(42,world.length*.38):target?clamp(target.z+10,4,world.length+5):32;let tx=target&&!home&&this.focusId!==null?target.x*.5:0;let wp=world.toWorld(tx,tz),lead=world.toWorld(tx,tz+8);let fy=world.floorY(tz);let cy=fy+1.3;let horizontal=(home?39:29)*this.zoom,vertical=(home?38:24)*this.zoom;let ang=this.cameraMode==='orbit'?this.orbitAngle:.58;let pitch=this.cameraMode==='orbit'?this.pitch:.76;let desired=[wp[0]+Math.sin(ang)*horizontal,cy+Math.sin(pitch)*vertical,wp[1]-Math.cos(ang)*horizontal];let aim=[lead[0],cy,lead[1]];let k=clamp(dt*(home?1.0:3),0,1);for(let i=0;i<3;i++){this.cam[i]+=(desired[i]-this.cam[i])*k;this.camTarget[i]+=(aim[i]-this.camTarget[i])*k}}
+updateCamera(world,dt,home){let alive=world.marbles.filter(b=>!b.finished),ordered=[...alive].sort((a,b)=>b.z-a.z);let target=ordered[Math.floor(Math.max(0,ordered.length-1)*.46)]||world.marbles[0];if(this.focusId!==null){let f=world.marbles.find(b=>b.id===this.focusId);if(f&&!f.finished)target=f}let tz=home?Math.min(42,world.length*.38):target?clamp(target.z+10,4,world.length+5):32;this.viewZ=tz;let tx=target&&!home&&this.focusId!==null?target.x*.5:0;let wp=world.toWorld(tx,tz),lead=world.toWorld(tx,tz+8);let fy=world.floorY(tz);let cy=fy+1.3;let horizontal=(home?39:29)*this.zoom,vertical=(home?38:24)*this.zoom;let ang=this.cameraMode==='orbit'?this.orbitAngle:.58;let pitch=this.cameraMode==='orbit'?this.pitch:.76;let desired=[wp[0]+Math.sin(ang)*horizontal,cy+Math.sin(pitch)*vertical,wp[1]-Math.cos(ang)*horizontal];let aim=[lead[0],cy,lead[1]];let k=clamp(dt*(home?1.0:3),0,1);for(let i=0;i<3;i++){this.cam[i]+=(desired[i]-this.cam[i])*k;this.camTarget[i]+=(aim[i]-this.camTarget[i])*k}}
 project(pos){let m=this.lastVP,v=[pos[0],pos[1],pos[2],1],a=[];for(let r=0;r<4;r++)a[r]=m[r]*v[0]+m[4+r]*v[1]+m[8+r]*v[2]+m[12+r]*v[3];if(a[3]<=0)return null;let x=(a[0]/a[3]*.5+.5)*this.canvas.clientWidth,y=(1-(a[1]/a[3]*.5+.5))*this.canvas.clientHeight;return {x,y,visible:a[2]/a[3]<1}}
-render(world,delta,home=false){if(!world)return;this.drawPath=world;this.resize();this.updateCamera(world,delta,home);let gl=this.gl,t=themes[world.theme]||themes.pegboard;gl.clearColor(...t.sky,1);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);let proj=perspective(Math.PI/3,gl.canvas.width/gl.canvas.height,.3,490),v=lookAt(this.cam,this.camTarget);this.lastVP=mm(proj,v);gl.useProgram(this.program);gl.uniformMatrix4fv(this.uniform.vp,false,this.lastVP);gl.uniform3fv(this.uniform.cam,this.cam);gl.uniform3fv(this.uniform.fog,t.sky);let tilt=Math.atan(.24),L=world.length,w=world.width,seg=4.5;
+render(world,delta,home=false){if(!world)return;this.drawPath=world;this.resize();this.updateCamera(world,delta,home);let gl=this.gl,t=themes[world.theme]||themes.pegboard;gl.clearColor(...t.sky,1);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);let proj=perspective(Math.PI/3,gl.canvas.width/gl.canvas.height,.3,490),v=lookAt(this.cam,this.camTarget);this.lastVP=mm(proj,v);gl.useProgram(this.program);gl.uniformMatrix4fv(this.uniform.vp,false,this.lastVP);gl.uniform3fv(this.uniform.cam,this.cam);gl.uniform3fv(this.uniform.fog,t.sky);let tilt=Math.atan(.24),L=world.length,w=world.width,seg=4.5,focusZ=this.viewZ??42,lo=home?0:Math.max(0,focusZ-78),hi=home?Math.min(L,155):Math.min(L,focusZ+94);
 // Downhill track, full 3D guardrails, lane markings and structural supports.
-for(let z=seg/2;z<L+seg/2;z+=seg){let actualL=Math.min(seg,L-(z-seg/2));if(actualL<=0)break;let mid=z-seg/2+actualL/2,y=world.floorY(mid);this.box(0,y-.32,mid,w*2+.7,.65,actualL+.06,t.floor,0,tilt);this.box(0,y+.045,mid,w*2,.12,actualL,t.track,0,tilt);for(let side of [-1,1]){this.box(side*(w+.18),y+.72,mid,.36,1.35,actualL+.08,t.rail,0,tilt);this.box(side*(w+.08),y+1.35,mid,.4,.15,actualL+.08,t.trim,0,tilt,0,.12)}this.box(0,y+.117,mid,.11,.025,actualL,t.trim,0,tilt);if(Math.floor(mid/seg)%2===0)for(let sx of [-w*.5,w*.5])this.box(sx,y+.11,mid,.07,.03,actualL,t.rail,0,tilt)}
-for(let z=12;z<L;z+=26){let y=world.floorY(z)-4.5;for(let x of [-w+.8,w-.8])this.box(x,y,z,.62,8.8,.7,'#566477');this.box(0,y-4.2,z,w*2+1,.5,.7,'#647589')}
+for(let z=seg/2;z<L+seg/2;z+=seg){if(z<lo-6||z>hi+6)continue;let actualL=Math.min(seg,L-(z-seg/2));if(actualL<=0)break;let mid=z-seg/2+actualL/2,y=world.floorY(mid);this.box(0,y-.32,mid,w*2+.7,.65,actualL+.06,t.floor,0,tilt);this.box(0,y+.045,mid,w*2,.12,actualL,t.track,0,tilt);for(let side of [-1,1]){this.box(side*(w+.18),y+.72,mid,.36,1.35,actualL+.08,t.rail,0,tilt);this.box(side*(w+.08),y+1.35,mid,.4,.15,actualL+.08,t.trim,0,tilt,0,.12)}this.box(0,y+.117,mid,.11,.025,actualL,t.trim,0,tilt);if(Math.floor(mid/seg)%2===0)for(let sx of [-w*.5,w*.5])this.box(sx,y+.11,mid,.07,.03,actualL,t.rail,0,tilt)}
+for(let z=12;z<L;z+=26){if(z<lo-8||z>hi+8)continue;let y=world.floorY(z)-4.5;for(let x of [-w+.8,w-.8])this.box(x,y,z,.62,8.8,.7,'#566477');this.box(0,y-4.2,z,w*2+1,.5,.7,'#647589')}
 // Scenic props sit outside the collision corridor. Every object inside the track has matching contact physics or is a floor decal.
 for(let z=20;z<L;z+=27){
+ if(z<lo-12||z>hi+12)continue;
  let y=world.floorY(z),m=Math.floor(z/27);
  if(world.theme==='pegboard'){
   for(let side of [-1,1]){this.cylinder(side*(w+3.4),y+2.4,z,.42,5.3,'#9d6640');this.sphere(side*(w+3.4),y+5.5,z,1.05,m%2?'#ffd275':'#fa857f',1)}
@@ -80,12 +81,15 @@ for(let z=20;z<L;z+=27){
   for(let side of [-1,1]){let x=side*(w+4.2);this.cylinder(x,y+1.5,z,2.1,4.6,'#553a43');this.sphere(x,y+4.2,z,1.6,m%2?'#ff8b35':'#ff4e32',1);this.sphere(x+side*.8,y+5.65,z-.5,.58,'#ffe07b',1)}
  }else if(world.theme==='reef'){
   for(let side of [-1,1]){let x=side*(w+4.3);this.cylinder(x,y+1,z,1.2,3.4,'#f2888c');for(let j=0;j<3;j++){this.sphere(x+(j-1)*1.15,y+2.3+j*.6,z+j*.8,.75,j%2?'#ffe3b2':'#ffb2cc',.7);this.sphere(x+side*(j+1)*.7,y+5+j*.9,z+1,.32,'#a7fff3',1)}}
+ }else if(world.theme==='tunnel'){
+  for(let side of [-1,1]){let x=side*(w+4);this.cylinder(x,y+2,z,.65,5.2,'#59658b');this.sphere(x,y+5,z,1.15,'#ffcde6',1);this.torus(x,y+2,z,2.2,'#7bdfff',.8)}
  }else if(world.theme==='pachinko'){
   for(let side of [-1,1]){this.cylinder(side*(w+2),y+1.4,z,.65,4.2,'#fbb863');this.sphere(side*(w+2),y+3.7,z,.85,m%2?'#ffe9ad':'#fc85b0',1)}
   if(m%2===0)this.box(0,y+4.25,z,w*2+1,.36,.5,t.trim,0,0,0,.2);
  }
 }
 for(let o of world.obstacles){
+ if(o.z<lo-16||o.z>hi+16)continue;
  let y=world.floorY(o.z)+.7;
  if(o.type==='peg'){
   this.cylinder(o.x,y,o.z,o.r,.95,t.peg);
@@ -102,10 +106,17 @@ for(let o of world.obstacles){
   this.box(o.gap,y+2.3,o.z,o.open+.8,.22,.48,t.trim,0,0,0,.35);
   for(let x of [left,right])this.box(x,y+1.1,o.z,.22,2,.5,t.trim);
  }else if(o.type==='vortex'){
-  // Only the outer torus is raised; its radius and tube match ringCollision.
-  this.torus(o.x,y-.42,o.z,o.r,t.trim,1);
+  // Open bowl walls exactly mirror the 12-part collision arc, including exit gaps.
   this.cylinder(o.x,y-.53,o.z,o.r*.78,.04,t.track);
-  this.cylinder(o.x,y-.3,o.z,.6,.21,t.trim);
+  for(let j=0;j<12;j++){
+   let a=j*TAU/12,b=(j+1)*TAU/12,mid=(a+b)*.5;
+   if(Math.abs(Math.sin(mid))>.73)continue;
+   let x1=o.x+o.r*Math.cos(a),z1=o.z+o.r*Math.sin(a);
+   let x2=o.x+o.r*Math.cos(b),z2=o.z+o.r*Math.sin(b);
+   let angle=-Math.atan2(x2-x1,z2-z1),len=Math.hypot(x2-x1,z2-z1);
+   this.box((x1+x2)*.5,y+.01,(z1+z2)*.5,.56,.72,len,t.trim,angle,0,0,.35);
+  }
+  this.cylinder(o.x,y-.3,o.z,.6,.5,t.peg);
  }else if(o.type==='booster'){
   for(let j=0;j<3;j++){let zz=o.z-1.8+j*1.8;this.box(o.x,world.floorY(zz)+.155,zz,Math.min(6.5,o.size),.05,.9,t.trim,0,tilt,0,.8)}
  }else if(o.type==='split'){
@@ -131,6 +142,55 @@ for(let o of world.obstacles){
   for(let side of [-1,1])this.box(o.x+side*2,y-.49,o.z,.11,.04,4,t.trim,0,tilt,0,.45);
  }
 }
+// Side barriers, active launch platforms, raised ramps, and continuous 3D tunnels.
+for(let o of world.obstacles){
+ if(o.z<lo-16||o.z>hi+16)continue;
+ let y=world.floorY(o.z);
+ if(o.type==='rumble'){
+  this.box(0,world.floorY(o.z)+.16,o.z,o.size,.13,1.75,t.trim,0,tilt,0,.32);
+  for(let j=-3;j<=3;j++)this.box(j*2.5,world.floorY(o.z)+.27,o.z,.35,.04,1.5,t.rail,0,tilt,0,.45);
+ }else if(o.type==='baffle'){
+  let ax=o.side*(w+1.7),az=o.z-2.5,bx=o.side*8.15,bz=o.z+2.8;
+  let len=Math.hypot(bx-ax,bz-az),angle=-Math.atan2(bx-ax,bz-az);
+  this.box((ax+bx)*.5,y+1,(az+bz)*.5,.85,1.35,len,t.peg,angle,tilt,0,.18);
+  this.sphere(bx,y+1.3,bz,.55,t.trim,1);this.cylinder(ax,y+1.1,az,.58,2.2,t.rail);
+ }else if(o.type==='launcher'){
+  this.box(o.x,y+.19,o.z,o.size,.2,3.9,'#f4a246',0,tilt,0,.35);
+  for(let k=0;k<3;k++){let zz=o.z-1.4+k*1.4;this.box(o.x,world.floorY(zz)+.3,zz,o.size*.82,.07,.26,'#fff3b2',0,tilt,0,.6)}
+  for(let side of [-1,1])this.cylinder(o.x+side*o.size*.47,y+.7,o.z,.32,1.2,t.trim);
+ }else if(o.type==='ramp'){
+  // Course elevation is genuinely altered by this smooth ramp; physics uses its slope.
+  this.box(0,y+.19,o.z,w*1.75,.05,5.0,t.trim,0,tilt,0,.3);
+  for(let side of [-1,1]){
+   this.box(side*(w-1),y+.46,o.z,.23,.62,6.4,t.rail,0,tilt);
+   this.sphere(side*(w-1),y+1,o.z,.33,'#fff6cb',1);
+  }
+ }else if(o.type==='tunnel'){
+  let start=o.z-o.len*.5,end=o.z+o.len*.5,r=o.width;
+  // Continuous side walls & roof bands follow the same curved path as the floor.
+  for(let zz=start+1.1;zz<end;zz+=2.2){
+   let h=world.floorY(zz),ll=Math.min(2.25,end-(zz-1.1));
+   for(let side of [-1,1]){
+    this.box(side*r,h+1.9,zz,.46,3.7,ll,t.rail,0,tilt,0,.05);
+    this.box(side*r*.73,h+4.7,zz,r*.52,.3,ll,t.floor,0,tilt);
+    this.box(side*r*.82,h+4.5,zz,.16,.12,ll,t.trim,0,tilt,0,.25);
+   }
+   this.box(0,h+.16,zz,r*2,.06,ll,t.track,0,tilt);
+  }
+  // Nine segments per arch create a rounded tunnel roof. The narrow central
+  // skylight preserves visibility of marbles when the camera is overhead.
+  for(let zz=start;zz<=end+.1;zz+=3.3){
+   let h=world.floorY(zz);
+   for(let j=0;j<9;j++){
+    let a=Math.PI-j*Math.PI/9,b=Math.PI-(j+1)*Math.PI/9;
+    let xa=r*Math.cos(a),ya=2+3.4*Math.sin(a);
+    let xb=r*Math.cos(b),yb=2+3.4*Math.sin(b);
+    this.box((xa+xb)*.5,h+(ya+yb)*.5,zz,Math.hypot(xb-xa,yb-ya),.26,.42,j%2?t.trim:t.rail,0,0,Math.atan2(yb-ya,xb-xa),.18);
+   }
+   for(let side of [-1,1])this.sphere(side*(r-.9),h+1.75,zz,.3,'#ffe8ac',1);
+  }
+ }
+}
 if(world.mode==='pachinko'){
  let scoreColors=['#56a7f8','#93e4d5','#fed27c','#ffe88e','#fed27c','#93e4d5','#56a7f8'];
  for(let i=0;i<7;i++){
@@ -141,7 +201,7 @@ if(world.mode==='pachinko'){
 // Finish checkerboard + raised arch.
 const fz=L-1;for(let a=0;a<14;a++)for(let b=0;b<2;b++){let x=-w+(a+.5)*(2*w/14),z=fz+(b-.5)*.92;this.box(x,world.floorY(z)+.155,z,2*w/14,.05,.49,(a+b)%2===0?'#f8f9ff':'#182638',0,tilt)}for(let s of [-1,1])this.box(s*w,world.floorY(fz)+2,fz,.42,4.3,.48,t.trim);this.box(0,world.floorY(fz)+4.25,fz,w*2+.6,.58,.5,t.trim);
 // All marbles have the same physical radius; skins are purely cosmetic.
-for(let b of world.marbles){let y=world.floorY(b.z)+b.r+.19+b.bounce;this.sphere(b.x,y,b.z,b.r,b.color,1);let shineColor=b.skin==='galaxy'?'#f9b5ff':b.skin==='neon'?'#9efff2':b.skin==='gold'?'#ffe9aa':null;if(shineColor)this.sphere(b.x-b.r*.25,y+b.r*.42,b.z-b.r*.23,b.r*.21,shineColor,1);if(b.finished)continue;if(b.skin==='neon'||b.skin==='galaxy'){this.sphere(b.x,y-.18,b.z-1.0,.17,shineColor,1)}}this.frame++}
+for(let b of world.marbles){if(b.z<lo-12||b.z>hi+12)continue;let jump=b.air>0&&b.airDuration?Math.sin(Math.PI*(1-b.air/b.airDuration))*3.15:0;let y=world.floorY(b.z)+b.r+.19+b.bounce+jump;this.sphere(b.x,y,b.z,b.r,b.color,1);let shineColor=b.skin==='galaxy'?'#f9b5ff':b.skin==='neon'?'#9efff2':b.skin==='gold'?'#ffe9aa':null;if(shineColor)this.sphere(b.x-b.r*.25,y+b.r*.42,b.z-b.r*.23,b.r*.21,shineColor,1);if(b.finished)continue;if(b.skin==='neon'||b.skin==='galaxy'){this.sphere(b.x,y-.18,b.z-1.0,.17,shineColor,1)}}this.frame++}
 }
 window.MarbleRenderer=Renderer;window.MarblePalette=themes;
 })();
@@ -157,18 +217,19 @@ const COLORS=['#ff6c89','#4fb8ff','#ffd35d','#6de3a1','#bf8aff','#ff984a','#f976
 const SKINS=[{id:'glass',title:'Classic Glass',cost:0,desc:'Bright classic glass finish.',color:null},{id:'chrome',title:'Ocean Chrome',cost:100,desc:'Cool reflective blue metal.',color:'#7bd7ee'},{id:'gold',title:'Gold Rush',cost:250,desc:'A golden champion finish.',color:'#ffd15d'},{id:'opal',title:'Iridescent Opal',cost:400,desc:'Soft pearlescent magic.',color:'#e9d9ff'},{id:'neon',title:'Neon Pulse',cost:350,desc:'Electric glowing aqua.',color:'#44ffcb'},{id:'galaxy',title:'Galaxy Swirl',cost:500,desc:'Cosmic purple with a spark.',color:'#9e71f3'}];
 const COURSES=[
 {id:'pegboard',title:'Pegboard Paradise',symbol:'✦',cost:0,desc:'Carved arcade boards, pinball pegs and friendly chevron splitters.'},
-{id:'funnel',title:'Funnel Frenzy',symbol:'◎',cost:300,desc:'Solid spiral-ring bumpers, swirling vortex currents and sweeping fans.'},
+{id:'funnel',title:'Funnel Frenzy',symbol:'◎',cost:300,desc:'Actual enclosed tunnel runs, swirling bowls and sweeping fans.'},
 {id:'factory',title:'Factory Frenzy',symbol:'⚙',cost:800,desc:'Heavy-duty pistons, spinning sweepers, slalom bumpers and launch pads.'},
 {id:'cosmic',title:'Cosmic Chaos',symbol:'✧',cost:1500,desc:'Neon gateways, magnetic attractors and spring-loaded stars.'},
 {id:'jungle',title:'Jungle Jumble',symbol:'🌴',cost:2000,desc:'Vine arches, giant flowers and tricky mossy bumper trails.'},
 {id:'glacier',title:'Glacier Glide',symbol:'❄',cost:2500,desc:'Icy slick patches, bright crystals and frozen chicanes.'},
 {id:'volcano',title:'Magma Mayhem',symbol:'🌋',cost:3200,desc:'Molten scenery, flaming launchers and explosive bumper fields.'},
 {id:'reef',title:'Coral Cove',symbol:'🐠',cost:4000,desc:'Bubble columns, coral structures, soft currents and round reef bumpers.'},
+{id:'tunnel',title:'Tunnel Twister',symbol:'◉',cost:0,desc:'Winding covered tunnels, track curves, wall deflectors and launch pads.'},
 {id:'pachinko',title:'Pachinko Palace',symbol:'▦',cost:0,modeOnly:true,desc:'A dedicated peg-drop board. Land in a scoring slot to win.'}
 ];
-const DEFAULT_SAVE={coins:150,unlockedCourses:['pegboard'],unlockedSkins:['glass'],stats:{races:0,wins:0,bestTime:null},lastBonus:'',sound:true,reducedMotion:false};
+const DEFAULT_SAVE={coins:150,unlockedCourses:['pegboard','tunnel'],unlockedSkins:['glass'],stats:{races:0,wins:0,bestTime:null},lastBonus:'',sound:true,reducedMotion:false};
 function loadSave(){try{let r=window.__MARBLE_NATIVE_SAVE||JSON.parse(localStorage.getItem('marbleRush3D.v1'));return {...structuredClone(DEFAULT_SAVE),...r,stats:{...DEFAULT_SAVE.stats,...r.stats}}}catch(e){return structuredClone(DEFAULT_SAVE)}}
-let save=loadSave();function persist(){let json=JSON.stringify(save);try{localStorage.setItem('marbleRush3D.v1',json)}catch(e){}try{window.webkit?.messageHandlers?.marbleSave?.postMessage(json)}catch(e){}}
+let save=loadSave();if(!save.unlockedCourses.includes('tunnel'))save.unlockedCourses.push('tunnel');function persist(){let json=JSON.stringify(save);try{localStorage.setItem('marbleRush3D.v1',json)}catch(e){}try{window.webkit?.messageHandlers?.marbleSave?.postMessage(json)}catch(e){}}
 const initialPlayer=i=>({id:i,name:`Player ${i+1}`,color:COLORS[i%COLORS.length],skin:'glass',team:i%2});
 const state={screen:'home',mode:'ffa',count:6,teams:2,course:'pegboard',length:'standard',players:Array.from({length:6},(_,i)=>initialPlayer(i)),shopTab:'marbles',world:null,simMode:'demo',running:false,paused:false,started:false,countdown:0,clock:0,finishShowing:false,lastHUD:-1,selectedFollow:null,toastUntil:0,toastText:'',demoSeed:0,renderFrames:0};
 let renderer;try{renderer=new window.MarbleRenderer(canvas)}catch(e){app.innerHTML=`<div class="panel narrow clickable"><h2>3D graphics unavailable</h2><p>${esc(e.message)}</p><p>Try the latest Safari or Chrome browser with WebGL enabled.</p></div>`;return;}
@@ -179,7 +240,7 @@ function coinHTML(){return `<span class="coin" aria-hidden="true"></span>${save.
 function btn(text,act,klass=''){return `<button type="button" class="btn ${klass}" data-action="${act}">${text}</button>`}
 function commonHead(title,subtitle,back='home'){return `<div class="panel-head"><div><div class="eyebrow">MARBLE RUSH 3D</div><h2>${title}</h2><p>${subtitle}</p></div><button class="icon-btn" type="button" data-action="${back}" title="Close" aria-label="Close">×</button></div>`}
 function setScreen(s){state.screen=s;state.lastHUD=-1;renderUI()}
-function home(){return `<div class="hero-shell"><div class="topbar"><div class="logo"><div class="logo-mark"></div><div class="brand">MARBLE<br><span>RUSH 3D</span></div></div><div class="wallet" aria-label="Coin balance">${coinHTML()}</div></div><div class="hero-main"><div class="hero-copy"><div class="eyebrow">MARBLE RACES · TEAMS · PACHINKO</div><h1>ROLL.<br>RACE.<br><em>REPEAT.</em></h1><p>Pick a marble, race through eight themed 3D courses, or try the brand-new Pachinko Palace. Six racers. Endless rematches.</p><div class="hero-cta">${btn('▶ &nbsp; START RACING','setup','primary lg')}${btn('✦ &nbsp; MARBLE SHOP','shop','ghost lg')}</div></div></div><div class="bottom-nav"><button class="nav-tile" data-action="setup">🏁 &nbsp; NEW RACE<small>2–6 marbles</small></button><button class="nav-tile" data-action="shop">✦ &nbsp; UNLOCKS<small>Skins & tracks</small></button><button class="nav-tile" data-action="records">🏆 &nbsp; RECORDS<small>Your stats</small></button><button class="nav-tile" data-action="settings">⚙ &nbsp; SETTINGS<small>Sound & motion</small></button></div></div><div class="version-tag">OFFLINE 3D PROTOTYPE • v0.2</div>`}
+function home(){return `<div class="hero-shell"><div class="topbar"><div class="logo"><div class="logo-mark"></div><div class="brand">MARBLE<br><span>RUSH 3D</span></div></div><div class="wallet" aria-label="Coin balance">${coinHTML()}</div></div><div class="hero-main"><div class="hero-copy"><div class="eyebrow">MARBLE RACES · TEAMS · PACHINKO</div><h1>ROLL.<br>RACE.<br><em>REPEAT.</em></h1><p>Choose one of six marbles, race through winding 3D tracks and real tunnel sections, or try Pachinko. No two courses are alike.</p><div class="hero-cta">${btn('▶ &nbsp; START RACING','setup','primary lg')}${btn('✦ &nbsp; MARBLE SHOP','shop','ghost lg')}</div></div></div><div class="bottom-nav"><button class="nav-tile" data-action="setup">🏁 &nbsp; NEW RACE<small>2–6 marbles</small></button><button class="nav-tile" data-action="shop">✦ &nbsp; UNLOCKS<small>Skins & tracks</small></button><button class="nav-tile" data-action="records">🏆 &nbsp; RECORDS<small>Your stats</small></button><button class="nav-tile" data-action="settings">⚙ &nbsp; SETTINGS<small>Sound & motion</small></button></div></div><div class="version-tag">OFFLINE 3D PROTOTYPE • v0.3</div>`}
 function setup(){let themes=COURSES.filter(c=>!c.modeOnly).map(c=>{let locked=!save.unlockedCourses.includes(c.id);return `<button type="button" class="course-option ${state.course===c.id?'active':''} ${locked?'locked':''}" data-action="course" data-value="${c.id}"><span class="pict">${c.symbol}</span>${c.title}${locked?`<small>🔒 ${c.cost} coins</small>`:'<small>✓ Unlocked</small>'}</button>`}).join('');return `<div class="panel wide clickable">${commonHead('Set up your race','One device. All marbles. Unlimited bragging rights.')}<div class="formgrid"><div class="field"><div class="field-title">GAME MODE</div><div class="segment"><button data-action="mode" data-value="ffa" class="${state.mode==='ffa'?'active':''}">Free for All</button><button data-action="mode" data-value="teams" class="${state.mode==='teams'?'active':''}">Teams</button><button data-action="mode" data-value="pachinko" class="${state.mode==='pachinko'?'active':''}">Pachinko</button></div></div><div class="field"><div class="field-title">PLAYERS <small>2–6 competitors</small></div><div class="range-row"><input aria-label="Number of players" type="range" min="2" max="6" step="1" value="${state.count}" id="player-count"><div class="count" id="count-label">${state.count}</div></div></div>${state.mode==='teams'?`<div class="field"><div class="field-title">NUMBER OF TEAMS</div><div class="segment">${[2,3,4].map(n=>`<button data-action="teams" data-value="${n}" ${state.count<n?'disabled':''} class="${state.teams===n?'active':''}">${n} teams</button>`).join('')}</div></div>`:''}<div class="field"><div class="field-title">RACE LENGTH</div><div class="segment">${[['sprint','Sprint'],['standard','Standard'],['epic','Epic']].map(([v,n])=>`<button data-action="length" data-value="${v}" class="${state.length===v?'active':''}">${n}</button>`).join('')}</div></div><div class="field full-row"><div class="field-title">${state.mode==='pachinko'?'PACHINKO BOARD':'CHOOSE COURSE TYPE'} <small>New layout every round</small></div>${state.mode==='pachinko'?'<p class="hint">🎰 Pachinko Palace: drop through a fresh peg field and land in a reward slot. Highest points wins; crossing time breaks ties. No course unlock required.</p>':`<div class="course-options">${themes}</div>`}</div></div><div class="form-foot"><div class="hint"><strong>${state.count} marbles</strong> · ${state.mode==='teams'?state.teams+' teams':state.mode==='pachinko'?'Pachinko':'Free for All'} · ${state.length} course<br>All marble stats are equal. Cosmetics never affect racing.</div>${btn('NEXT: PICK MARBLES →','roster','primary lg')}</div></div>`}
 function roster(){let opts=SKINS.filter(s=>save.unlockedSkins.includes(s.id)).map(s=>`<option value="${s.id}">${s.title}</option>`);let rows=state.players.slice(0,state.count).map((p,i)=>{let clr=skinColor(p);return `<div class="player-card" data-player="${i}"><span class="player-number">${String(i+1).padStart(2,'0')}</span><span class="marble-swatch" style="background:${clr}"></span><div class="player-controls"><input maxlength="15" aria-label="Player ${i+1} name" data-player-name="${i}" value="${esc(p.name)}" placeholder="Player ${i+1}"><div style="display:flex;gap:6px"><select data-skin="${i}" aria-label="Player ${i+1} marble finish">${opts.map(s=>s.replace(`value="${p.skin}"`,`value="${p.skin}" selected`)).join('')}</select>${state.mode==='teams'?`<select data-team="${i}" aria-label="Player ${i+1} team">${Array.from({length:state.teams},(_,j)=>`<option value="${j}" ${p.team%state.teams===j?'selected':''}>Team ${j+1}</option>`).join('')}</select>`:''}</div></div></div>`}).join('');return `<div class="panel wide clickable">${commonHead('Choose your marbles','Pass the device around. Everyone chooses a name and marble finish.','setup')}<div class="roster">${rows}</div><div class="form-foot"><span class="hint">Unlocked finishes can be used by any player.<br>Everyone races with identical physics.</span>${btn('PREVIEW COURSE →','preview','primary lg')}</div></div>`}
 function preview(){let c=COURSES.find(x=>x.id===state.world.theme);return `<div class="panel narrow clickable" style="margin-left:auto;margin-right:max(14px,4vw)">${commonHead('Course ready','The 3D track behind this window was generated for your race.','roster')}<div class="field" style="margin-bottom:12px"><div class="eyebrow">${esc(c.title.toUpperCase())}</div><div style="font-size:31px;font-weight:950;margin:5px 0">${c.symbol} &nbsp;${esc(c.title)}</div><div class="hint">${state.world.obstacles.length} obstacle modules · Seed #${state.world.seed.toString(36).toUpperCase()} · ${state.count} contenders</div></div><p class="hint">${state.mode==='pachinko'?'Highest scoring slot wins. The center is worth 1,000 points; ties go to the quicker marble.':'Race cameras follow the action automatically.'} During the race, drag to orbit, scroll or pinch to zoom, or tap a racer in the leaderboard.</p><div class="form-foot">${btn('↻ REGENERATE','regen','ghost')}${btn('▶ &nbsp; LAUNCH RACE','launch','primary lg')}</div></div>`}
@@ -201,34 +262,91 @@ const PACHINKO_SLOTS=[100,250,500,1000,500,250,100];
 function createWorld(theme,seed,lengthName='standard',players=null){
 if(theme==='pachinko'){
  let w=createWorld('pegboard',seed,lengthName,players);
- w.theme='pachinko';w.mode='pachinko';w.pathX=z=>0;w.pathSlope=z=>0;w.pathCurvature=z=>0;w.heading=z=>0;w.toWorld=(x,z)=>[x,z];w.length=({sprint:110,standard:160,epic:210})[lengthName]||160;w.obstacles=[];
+ w.theme='pachinko';w.mode='pachinko';w.pathX=z=>0;w.pathSlope=z=>0;w.pathCurvature=z=>0;w.rampSlope=z=>0;w.heading=z=>0;w.toWorld=(x,z)=>[x,z];w.length=({sprint:110,standard:160,epic:210})[lengthName]||160;w.obstacles=[];
  let random=RNG(seed^0x913f2517);
  for(let row=0,z=18;z<w.length-12;row++,z+=6.2){let shift=row%2?1.1:0;for(let c=0;c<5;c++){let x=-7.1+c*3.55+shift;if(Math.abs(x)<8.9)w.obstacles.push({type:'peg',x,z:z+(random()-.5)*.4,r:.67+random()*.13})}}
  return w;
 }
-let rand=RNG(seed),length=({sprint:112,standard:185,epic:280})[lengthName]||185;let obstacles=[],z=17;while(z<length-13){let r=rand(),choices={pegboard:['peg','peg','split','spinner','gate','booster','bumper'],funnel:['vortex','peg','spinner','vortex','booster','split','bumper'],factory:['spinner','gate','spinner','split','booster','spring','bumper'],cosmic:['booster','vortex','spinner','magnet','spring','bumper','gate'],jungle:['peg','split','bumper','peg','magnet','spinner','gate'],glacier:['ice','bumper','split','ice','spinner','peg','gate'],volcano:['spring','spinner','booster','gate','spring','bumper','vortex'],reef:['vortex','peg','bumper','magnet','split','vortex','booster']},kinds=choices[theme]||choices.pegboard;let type=kinds[Math.floor(r*kinds.length)],x=(rand()-.5)*10;let o={type,x,z,phase:rand()*TAU,speed:(rand()<.5?-1:1)*(1.1+rand()*1.5),size:5+rand()*3,r:.65+rand()*.25};if(type==='peg'){let xs=[-6.8,-2.5,2.5,6.8];for(let i=0;i<4;i++)if(rand()>.19)obstacles.push({...o,type:'peg',x:xs[i]+(rand()-.5)*1.6,z:z+(rand()-.5)*2,r:.66+rand()*.25})}else if(type==='gate'){o.gap=(rand()-.5)*8;o.open=8.6+rand()*1.1;obstacles.push(o)}else if(type==='vortex'){o.r=2.5+rand()*.85;o.x=clamp(o.x,-5.1,5.1);obstacles.push(o)}else if(type==='bumper'||type==='spring'){o.r=type==='spring'?1.05:1.35;obstacles.push(o)}else if(type==='magnet'){o.r=3.2;obstacles.push(o)}else if(type==='ice'){o.size=7;obstacles.push(o)}else obstacles.push(o);z+=11+rand()*6}
-let marbles=(players||Array.from({length:6},(_,i)=>initialPlayer(i))).slice(0,6).map((p,i,all)=>{let span=Math.min(13.5,3.05*(all.length-1));let startX=all.length===1?0:(i/(all.length-1)-.5)*span;return {id:p.id,name:p.name.trim()||`Player ${i+1}`,team:p.team,x:startX,z:1.3,y:0,vx:(rand()-.5)*.22,vz:0,r:.45,bounce:0,finished:false,place:null,time:null,score:0,color:skinColor(p),skin:p.skin,stuck:0,prevZ:1.3,progressBest:1.3,progressTimer:0}});for(let i=marbles.length-1;i>0;i--){let j=Math.floor(rand()*(i+1));[marbles[i].x,marbles[j].x]=[marbles[j].x,marbles[i].x]}
+let rand=RNG(seed),length=({sprint:112,standard:185,epic:280})[lengthName]||185;let obstacles=[],z=17;while(z<length-13){let r=rand(),choices={pegboard:['peg','peg','split','spinner','gate','booster','bumper'],funnel:['vortex','peg','spinner','vortex','booster','split','bumper','ramp','launcher'],factory:['spinner','gate','spinner','split','booster','spring','bumper','launcher','ramp'],cosmic:['booster','vortex','spinner','magnet','spring','bumper','gate','launcher','ramp'],jungle:['peg','split','bumper','peg','magnet','spinner','gate','ramp'],glacier:['ice','bumper','split','ice','spinner','peg','gate','ramp'],volcano:['spring','spinner','booster','gate','spring','bumper','vortex','launcher','ramp'],reef:['vortex','peg','bumper','magnet','split','vortex','booster','ramp'],tunnel:['tunnel','bumper','launcher','spinner','ramp','gate','peg']},kinds=choices[theme]||choices.pegboard;let type=kinds[Math.floor(r*kinds.length)],x=(rand()-.5)*10;let o={type,x,z,phase:rand()*TAU,speed:(rand()<.5?-1:1)*(1.1+rand()*1.5),size:5+rand()*3,r:.65+rand()*.25};if(type==='peg'){let xs=[-6.8,-2.5,2.5,6.8];for(let i=0;i<4;i++)if(rand()>.19)obstacles.push({...o,type:'peg',x:xs[i]+(rand()-.5)*1.6,z:z+(rand()-.5)*2,r:.66+rand()*.25})}else if(type==='gate'){o.gap=(rand()-.5)*8;o.open=8.6+rand()*1.1;obstacles.push(o)}else if(type==='vortex'){o.r=2.5+rand()*.85;o.x=clamp(o.x,-5.1,5.1);obstacles.push(o)}else if(type==='bumper'||type==='spring'){o.r=type==='spring'?1.05:1.35;obstacles.push(o)}else if(type==='magnet'){o.r=3.2;obstacles.push(o)}else if(type==='ice'){o.size=7;obstacles.push(o)}else if(type==='launcher'){o.size=6.1;o.x=clamp(x,-4.8,4.8);obstacles.push(o)}else if(type==='ramp'){o.rise=1.7;obstacles.push(o)}else if(type==='tunnel'){o.len=15;o.width=7.2;obstacles.push(o)}else obstacles.push(o);z+=11+rand()*6}
+
+/* Lay out curated chapters so broad chicanes and peg rows do not overlap gates
+   or other narrow critical modules. Keep side baffles short and separated. */
+if(['funnel','tunnel','glacier','reef','cosmic'].includes(theme)){
+for(let tz=theme==='tunnel'?26:39;tz<length-22;tz+=theme==='tunnel'?55:84){
+ obstacles=obstacles.filter(o=>Math.abs(o.z-tz)>12);
+ obstacles.push({type:'tunnel',x:0,z:tz,len:16,width:theme==='tunnel'?7:7.6});
+}}
+const inTunnel=z=>obstacles.some(o=>o.type==='tunnel'&&Math.abs(o.z-z)<o.len*.5+6);
+for(let zz=37;zz<length-14;zz+=44){
+ if(inTunnel(zz)||inTunnel(zz+6))continue;
+ // clear intersecting modules first; the pair is intentionally navigable
+ obstacles=obstacles.filter(o=>o.type==='tunnel'||(Math.abs(o.z-zz)>8&&Math.abs(o.z-(zz+6))>8));
+ let xs1=[-7.7,-3.85,0,3.85,7.7],xs2=[-5.8,-1.93,1.93,5.8];
+ for(let x of xs1)obstacles.push({type:'peg',x,z:zz,r:.93});
+ for(let x of xs2)obstacles.push({type:'peg',x,z:zz+6,r:.93});
+}
+for(let zz=24,i=0;zz<length-16;zz+=12.5,i++){
+ if(inTunnel(zz))continue;
+ let side=i%2?1:-1;
+ // Keep frequent side-mounted bumpers away from other solid objects.
+ if(!obstacles.some(o=>Math.abs(o.z-zz)<3.6&&Math.abs((o.x||0)-side*8.4)<3.1))
+   obstacles.push({type:'bumper',x:side*11.2,z:zz,r:2.02});
+ // Baffles only occupy clear chapters, never overlapping a peg row or gate.
+ if(i%2===0&&!obstacles.some(o=>o.type!=='ramp'&&o.type!=='booster'&&Math.abs(o.z-zz)<7.1))
+   obstacles.push({type:'baffle',side,x:side*8,z:zz});
+}
+if(theme!=='pegboard')for(let zz=62;zz<length-14;zz+=83){
+ if(inTunnel(zz))continue;
+ obstacles.push({type:'ramp',x:0,z:zz,rise:1.65});
+ if(['volcano','factory','cosmic','tunnel'].includes(theme))obstacles.push({type:'launcher',x:(rand()-.5)*4,z:zz+11,size:6});
+}
+// A full-width rumble ridge just after the launch ensures all marbles touch
+// an obstacle before entering the randomized maze.
+obstacles.push({type:'rumble',x:0,z:12,size:19.2});
+let marbles=(players||Array.from({length:6},(_,i)=>initialPlayer(i))).slice(0,6).map((p,i,all)=>{let span=Math.min(13.5,3.05*(all.length-1));let startX=all.length===1?0:(i/(all.length-1)-.5)*span;return {id:p.id,name:p.name.trim()||`Player ${i+1}`,team:p.team,x:startX,z:1.3,y:0,vx:(rand()-.5)*.22,vz:0,r:.45,bounce:0,finished:false,place:null,time:null,score:0,hitCount:0,air:0,airDuration:0,launchCooldown:0,rumbleHit:false,color:skinColor(p),skin:p.skin,stuck:0,prevZ:1.3,progressBest:1.3,progressTimer:0}});for(let i=marbles.length-1;i>0;i--){let j=Math.floor(rand()*(i+1));[marbles[i].x,marbles[j].x]=[marbles[j].x,marbles[i].x]}
 // Each track is shaped around a continuous, tangent-aligned S-curve. Coordinates of all
 // obstacles and collisions remain in the course's local lanes.
 let phase=rand()*Math.PI*2,amplitude=theme==='funnel'?14:theme==='factory'?10:12;
-let center=z=>amplitude*(Math.sin(z*.028+phase)-Math.sin(phase))+
+let ramps=obstacles.filter(o=>o.type==='ramp');let center=z=>amplitude*(Math.sin(z*.028+phase)-Math.sin(phase))+
   3.5*(Math.sin(z*.067+phase*.58)-Math.sin(phase*.58));
 let slope=z=>amplitude*.028*Math.cos(z*.028+phase)+3.5*.067*Math.cos(z*.067+phase*.58);
 let curvature=z=>-amplitude*.028*.028*Math.sin(z*.028+phase)-3.5*.067*.067*Math.sin(z*.067+phase*.58);
 return {seed,theme,mode:'race',length,obstacles,marbles,width:10,elapsed:0,time:0,done:false,coinsEarned:0,finishOrder:[],
- floorY:z=>12-.24*z, pathX:center,pathSlope:slope,pathCurvature:curvature,
+ floorY:z=>{let y=12-.24*z;for(let r of ramps){let d=(z-r.z)/5.4;if(Math.abs(d)<2)y+=r.rise*Math.exp(-d*d)}return y;},
+ rampSlope:z=>{let v=0;for(let r of ramps){let d=(z-r.z)/5.4;if(Math.abs(d)<2)v+=-2*r.rise*d/5.4*Math.exp(-d*d)}return v;},
+ pathX:center,pathSlope:slope,pathCurvature:curvature,
  heading:z=>-Math.atan(slope(z)),
  toWorld:(x,z)=>{let a=Math.atan(slope(z));return [center(z)+x*Math.cos(a),z-x*Math.sin(a)]}};
 }
-function circleCollision(b,x,z,r,impulse=1){let dx=b.x-x,dz=b.z-z,d2=dx*dx+dz*dz,min=b.r+r;if(d2>=min*min)return false;let d=Math.sqrt(Math.max(d2,.0001)),nx=dx/d,nz=dz/d,overlap=min-d;b.x+=nx*overlap*1.03;b.z+=nz*overlap*1.03;let vn=b.vx*nx+b.vz*nz;if(vn<0){b.vx-=(1.4*impulse)*vn*nx;b.vz-=(1.4*impulse)*vn*nz;b.bounce=Math.min(.7,b.bounce+.12)}return true}
+function circleCollision(b,x,z,r,impulse=1){let dx=b.x-x,dz=b.z-z,d2=dx*dx+dz*dz,min=b.r+r;if(d2>=min*min)return false;let d=Math.sqrt(Math.max(d2,.0001)),nx=dx/d,nz=dz/d,overlap=min-d;b.x+=nx*overlap*1.03;b.z+=nz*overlap*1.03;let vn=b.vx*nx+b.vz*nz;if(vn<0){b.hitCount=(b.hitCount||0)+1;b.vx-=(1.4*impulse)*vn*nx;b.vz-=(1.4*impulse)*vn*nz;b.bounce=Math.min(.7,b.bounce+.12)}return true}
 function segmentCollision(b,x1,z1,x2,z2,thickness=.4,impulse=1){let vx=x2-x1,vz=z2-z1,den=vx*vx+vz*vz||1,t=clamp(((b.x-x1)*vx+(b.z-z1)*vz)/den,0,1);return circleCollision(b,x1+vx*t,z1+vz*t,thickness,impulse)}
 function ringCollision(b,x,z,r,thick){let dx=b.x-x,dz=b.z-z,d=Math.hypot(dx,dz),offset=d-r,reach=b.r+thick;if(d<.0001||Math.abs(offset)>=reach)return false;let sign=offset>=0?1:-1,nx=sign*dx/d,nz=sign*dz/d,displace=reach-Math.abs(offset)+.002;b.x+=nx*displace;b.z+=nz*displace;let vn=b.vx*nx+b.vz*nz;if(vn<0){b.vx-=1.45*vn*nx;b.vz-=1.45*vn*nz}return true}
-function tick(world,dt){if(world.done)return;world.time+=dt;let thisFrameFinishers=[];let max=13.3,finish=world.length,halfW=world.width;for(let b of world.marbles){if(b.finished)continue;b.prevZ=b.z;let oldVz=b.vz;b.vz+=dt*(1.75-.019*Math.abs(b.vz)*b.vz);b.vx-=Math.max(-1,Math.min(1,b.vz*b.vz*world.pathCurvature(b.z)*.4))*dt;b.vx*=Math.exp(-(world.obstacles.some(o=>o.type==='ice'&&Math.abs(o.z-b.z)<3&&Math.abs(o.x-b.x)<4)?.13:.58)*dt);b.vz*=Math.exp(-.028*dt);b.x+=b.vx*dt;b.z+=b.vz*dt;b.bounce*=Math.exp(-5.5*dt);let previousBounce=b.bounce;if(b.x<-halfW+b.r){b.x=-halfW+b.r;b.vx=Math.abs(b.vx)*.66+.08}else if(b.x>halfW-b.r){b.x=halfW-b.r;b.vx=-Math.abs(b.vx)*.66-.08}
-for(let o of world.obstacles){if(Math.abs(o.z-b.z)>8)continue;if(o.type==='peg'||o.type==='bumper'||o.type==='spring'){let hit=circleCollision(b,o.x,o.z,o.r,o.type==='spring'?1.4:.92);if(hit&&o.type==='spring'){b.vz+=2.4;b.vx+=(b.x>o.x?1:-1)*1.2}}else if(o.type==='spinner'){let a=world.time*o.speed+o.phase,dx=Math.cos(a)*o.size*.5,dz=Math.sin(a)*o.size*.5;let hit=segmentCollision(b,o.x-dx,o.z-dz,o.x+dx,o.z+dz,.42,1.15);if(hit){b.vx+=(-dz/(o.size*.5))*o.speed*.72;b.vz+=(dx/(o.size*.5))*o.speed*.34}}else if(o.type==='split'){segmentCollision(b,-1.8,o.z+1.4,0,o.z-.6,.32);segmentCollision(b,0,o.z-.6,1.8,o.z+1.4,.32);circleCollision(b,0,o.z-.6,.55)}else if(o.type==='gate'){let left=o.gap-o.open*.5,right=o.gap+o.open*.5;if(b.z>=o.z-7&&b.z<o.z+1&& (b.x<left+b.r||b.x>right-b.r))b.vx+=Math.sign(o.gap-b.x)*dt*5.6;if(Math.abs(b.z-o.z)<b.r+.48&&(b.x<left||b.x>right)){let fromFront=b.z<o.z;b.z=fromFront?o.z-b.r-.48:o.z+b.r+.48;b.vz=fromFront?-Math.abs(b.vz)*.33:Math.abs(b.vz)*.45;b.vx+=(o.gap-b.x)*.28}}else if(o.type==='vortex'){let dx=b.x-o.x,dz=b.z-o.z,rad=Math.hypot(dx,dz);ringCollision(b,o.x,o.z,o.r,o.r*.12);if(rad>o.r&&rad<o.r+2.5){let v=1-(rad-o.r)/2.5,spin=Math.sin(o.phase)>0?1:-1;b.vx+=dt*spin*(-dz/rad)*2.6*v;b.vz+=dt*spin*(dx/rad)*1.8*v}}else if(o.type==='magnet'){circleCollision(b,o.x,o.z,.65);let dx=o.x-b.x,dz=o.z-b.z,dist=Math.hypot(dx,dz);if(dist>1&&dist<o.r+2){let force=dt*(o.r+2-dist)*.15;b.vx+=dx/dist*force;b.vz+=dz/dist*force}}else if(o.type==='booster'){if(Math.abs(b.x-o.x)<o.size*.5&&Math.abs(b.z-o.z)<2.3)b.vz+=dt*12}}
+function tick(world,dt){if(world.done)return;world.time+=dt;let thisFrameFinishers=[];let max=13.3,finish=world.length,halfW=world.width;for(let b of world.marbles){if(b.finished)continue;b.prevZ=b.z;let oldVz=b.vz;b.vz+=dt*(1.75-.019*Math.abs(b.vz)*b.vz)-(world.rampSlope?Math.max(-.5,Math.min(.5,world.rampSlope(b.z)))*4.5*dt:0);b.vx-=Math.max(-1,Math.min(1,b.vz*b.vz*world.pathCurvature(b.z)*.4))*dt;b.vx*=Math.exp(-(world.obstacles.some(o=>o.type==='ice'&&Math.abs(o.z-b.z)<3&&Math.abs(o.x-b.x)<4)?.13:.58)*dt);b.vz*=Math.exp(-.028*dt);b.x+=b.vx*dt;b.z+=b.vz*dt;b.air=Math.max(0,(b.air||0)-dt);b.launchCooldown=Math.max(0,(b.launchCooldown||0)-dt);b.bounce*=Math.exp(-5.5*dt);let previousBounce=b.bounce;if(b.x<-halfW+b.r){b.x=-halfW+b.r;b.vx=Math.abs(b.vx)*.66+.08}else if(b.x>halfW-b.r){b.x=halfW-b.r;b.vx=-Math.abs(b.vx)*.66-.08}
+for(let o of world.obstacles){if(Math.abs(o.z-b.z)>11)continue;if(b.air>.22&&o.type!=='tunnel')continue;if(o.type==='peg'||o.type==='bumper'||o.type==='spring'){let hit=circleCollision(b,o.x,o.z,o.r,o.type==='spring'?1.4:.92);if(hit&&o.type==='spring'){b.vz+=2.4;b.vx+=(b.x>o.x?1:-1)*1.2}}else if(o.type==='spinner'){let a=world.time*o.speed+o.phase,dx=Math.cos(a)*o.size*.5,dz=Math.sin(a)*o.size*.5;let hit=segmentCollision(b,o.x-dx,o.z-dz,o.x+dx,o.z+dz,.42,1.15);if(hit){b.vx+=(-dz/(o.size*.5))*o.speed*.72;b.vz+=(dx/(o.size*.5))*o.speed*.34}}else if(o.type==='split'){segmentCollision(b,-1.8,o.z+1.4,0,o.z-.6,.32);segmentCollision(b,0,o.z-.6,1.8,o.z+1.4,.32);circleCollision(b,0,o.z-.6,.55)}else if(o.type==='gate'){let left=o.gap-o.open*.5,right=o.gap+o.open*.5;if(b.z>=o.z-7&&b.z<o.z+1&& (b.x<left+b.r||b.x>right-b.r))b.vx+=Math.sign(o.gap-b.x)*dt*5.6;if(Math.abs(b.z-o.z)<b.r+.48&&(b.x<left||b.x>right)){let fromFront=b.z<o.z;b.z=fromFront?o.z-b.r-.48:o.z+b.r+.48;b.vz=fromFront?-Math.abs(b.vz)*.33:Math.abs(b.vz)*.45;b.vx+=(o.gap-b.x)*.28}}else if(o.type==='vortex'){
+ let dx=b.x-o.x,dz=b.z-o.z,rad=Math.hypot(dx,dz);
+ // A real pass-through bowl: solid curved side banks, clear openings upstream/downstream.
+ for(let i=0;i<12;i++){
+  let a=i*TAU/12,c=(i+1)*TAU/12,mid=(a+c)*.5;
+  if(Math.abs(Math.sin(mid))>.73)continue;
+  segmentCollision(b,o.x+o.r*Math.cos(a),o.z+o.r*Math.sin(a),
+    o.x+o.r*Math.cos(c),o.z+o.r*Math.sin(c),.28,.85);
+ }
+ circleCollision(b,o.x,o.z,.6,.75);
+ if(rad>.5&&rad<o.r+2.6){
+  let v=Math.min(1,(o.r+2.6-rad)/2.6),spin=Math.sin(o.phase)>=0?1:-1;
+  b.vx+=dt*spin*(-dz/rad)*1.55*v;
+  b.vz+=dt*(spin*(dx/rad)*.9+.85)*v;
+ }
+}else if(o.type==='magnet'){circleCollision(b,o.x,o.z,.65);let dx=o.x-b.x,dz=o.z-b.z,dist=Math.hypot(dx,dz);if(dist>1&&dist<o.r+2){let force=dt*(o.r+2-dist)*.15;b.vx+=dx/dist*force;b.vz+=dz/dist*force}}else if(o.type==='booster'){if(Math.abs(b.x-o.x)<o.size*.5&&Math.abs(b.z-o.z)<2.3)b.vz+=dt*12}
+else if(o.type==='baffle'){segmentCollision(b,o.side*(halfW+1.7),o.z-2.5,o.side*8.15,o.z+2.8,.43,.85)}
+else if(o.type==='tunnel'){if(Math.abs(b.z-o.z)<o.len*.5+.2){let bound=o.width-b.r;if(b.x>bound){b.x=bound;b.vx=-Math.abs(b.vx)*.73;b.hitCount++}else if(b.x<-bound){b.x=-bound;b.vx=Math.abs(b.vx)*.73;b.hitCount++}if(b.air>.2)b.air=.2}}
+else if(o.type==='launcher'){if(Math.abs(b.x-o.x)<o.size*.5&&Math.abs(b.z-o.z)<2.1&&b.launchCooldown<=0){b.vz=Math.max(b.vz,12.5);b.vx+=(b.x>o.x?1:-1)*1.15;b.air=.83;b.airDuration=.83;b.launchCooldown=2;b.hitCount++;world.hitEvents=(world.hitEvents||0)+1}}
+else if(o.type==='ramp'){if(Math.abs(b.z-o.z)<4&&Math.abs(b.x)<halfW)b.vz+=dt*1.4}
+else if(o.type==='rumble'){if(!b.rumbleHit&&Math.abs(b.z-o.z)<.7){b.rumbleHit=true;b.hitCount++;b.bounce=Math.max(b.bounce,.36);world.hitEvents=(world.hitEvents||0)+1}}}
 if(b.bounce>previousBounce+.08)world.hitEvents=(world.hitEvents||0)+1;b.vz=clamp(b.vz,-5,max);b.vx=clamp(b.vx,-8,8);if(b.z<.25){b.z=.25;b.vz=Math.abs(b.vz)*.4}if(b.vz<.7&&Math.abs(b.z-b.prevZ)<.01)b.stuck+=dt;else b.stuck=Math.max(0,b.stuck-dt*.7);if(b.stuck>7){b.vz=Math.max(b.vz,4.5);b.vx+=(world.seed%2?1:-1)*1.3;b.stuck=0}
 // Stuck marbles recover through gradual steering and acceleration, not position teleports.
 if(b.z>b.progressBest+1.0){b.progressBest=b.z;b.progressTimer=0}else b.progressTimer+=dt;
-if(b.progressTimer>3.5){let gate=world.obstacles.find(o=>o.type==='gate'&&o.z>b.z-2&&o.z<b.z+12),target=gate?gate.gap:((b.id+world.seed)%2?7:-7);b.vx+=clamp(target-b.x,-8,8)*dt*7;b.vz=Math.max(b.vz,6)}
+if(b.progressTimer>3.5){let gate=world.obstacles.find(o=>o.type==='gate'&&o.z>b.z-2&&o.z<b.z+12),target=gate?gate.gap:Math.abs(b.x)>halfW*.54?0:((b.id+world.seed)%2?5:-5);b.vx+=clamp(target-b.x,-8,8)*dt*7;b.vz=Math.max(b.vz,6)}
 if(b.z>=finish){let frac=oldVz>0?clamp((finish-b.prevZ)/Math.max(.0001,b.z-b.prevZ),0,1):1;b.z=finish;b.time=Math.max(.01,world.time-dt+frac*dt);b.finished=true;if(world.mode==='pachinko'){let slot=clamp(Math.floor((b.x+halfW)/(halfW*2)*PACHINKO_SLOTS.length),0,PACHINKO_SLOTS.length-1);b.score=PACHINKO_SLOTS[slot];b.slot=slot}thisFrameFinishers.push(b)}}
 thisFrameFinishers.sort((a,b)=>a.time-b.time);for(let b of thisFrameFinishers){b.place=world.finishOrder.length+1;world.finishOrder.push(b.id)}
 // Pairwise physically responsive 3D marble collisions, same size and mass for all cosmetics.
