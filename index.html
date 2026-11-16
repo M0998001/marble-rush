@@ -25,6 +25,13 @@
 @media(max-width:530px){.color-picker-row{gap:6px}.player-controls .color-choice{width:19px;height:19px}.player-controls input[type=color]{width:35px;height:28px;min-width:35px}}
 .shop-preview-picker{display:inline-flex;align-items:center;gap:7px;font-size:10px;letter-spacing:.3px;font-weight:800;color:#c6f1fc;background:#102d45;padding:6px 9px;border-radius:9px;white-space:nowrap}
 .shop-preview-picker input[type=color]{width:34px;height:28px;background:transparent;border:1px solid #5a97aa;border-radius:6px;cursor:pointer;padding:1px}
+
+#scene{z-index:0}
+#pachinko-sideview{position:fixed;inset:0;width:100%;height:100%;display:none;z-index:1;pointer-events:none;background:#061326}
+#overlay,#app{z-index:2}
+
+/* Keep the upright-board controls readable on narrow iPhones. */
+@media(max-width:730px){.hud-controls:has([data-action="pachinko-overview"]){gap:5px}.hud-controls [data-action="pachinko-overview"]{padding:7px 8px;min-width:80px;font-size:10px}}
 </style></head><body><canvas id="scene" aria-label="3D marble racing arena"></canvas><div id="overlay"><div id="hud" class="hud hidden"></div></div><main id="app"></main><script>
 /* Marble Rush 3D — original, dependency-free WebGL 1 renderer */
 (function(){
@@ -223,7 +230,17 @@ setMode(mode,id=null){this.cameraMode=mode;this.focusId=id}
 bindPointer(){let c=this.canvas;this.pinchDistance=0;c.addEventListener('pointerdown',e=>{this.pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});try{c.setPointerCapture(e.pointerId)}catch(err){}if(this.pointers.size===2){let pts=[...this.pointers.values()];this.pinchDistance=Math.hypot(pts[0].x-pts[1].x,pts[0].y-pts[1].y)}});c.addEventListener('pointermove',e=>{let p=this.pointers.get(e.pointerId);if(!p)return;let dx=e.clientX-p.x,dy=e.clientY-p.y;this.pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});if(this.pointers.size>=2){let pts=[...this.pointers.values()],distance=Math.hypot(pts[0].x-pts[1].x,pts[0].y-pts[1].y);if(this.pinchDistance>0&&distance>1)this.zoom=clamp(this.zoom*this.pinchDistance/distance,.55,2.25);this.pinchDistance=distance;return}if(Math.abs(dx)+Math.abs(dy)>.1){this.cameraMode='orbit';this.orbitAngle=clamp(this.orbitAngle+dx*.007,-1.65,1.65);this.pitch=clamp(this.pitch+dy*.005,.24,1.32)}});for(let ev of ['pointerup','pointercancel'])c.addEventListener(ev,e=>{this.pointers.delete(e.pointerId);this.pinchDistance=0});c.addEventListener('wheel',e=>{this.zoom=clamp(this.zoom+e.deltaY*.001,.55,2.25);e.preventDefault()},{passive:false})}
 updateCamera(world,dt,home){let alive=world.marbles.filter(b=>!b.finished),ordered=[...alive].sort((a,b)=>b.z-a.z);let target=ordered[Math.floor(Math.max(0,ordered.length-1)*.46)]||world.marbles[0];if(this.focusId!==null){let f=world.marbles.find(b=>b.id===this.focusId);if(f&&!f.finished)target=f}let tz=home?Math.min(42,world.length*.38):target?clamp(target.z+10,4,world.length+5):32;this.viewZ=tz;let tx=target&&!home&&this.focusId!==null?target.x*.5:0;let wp=world.toWorld(tx,tz),lead=world.toWorld(tx,tz+8);let fy=world.floorY(tz);let cy=fy+1.3;let horizontal=(home?39:29)*this.zoom,vertical=(home?38:24)*this.zoom;let ang=this.cameraMode==='orbit'?this.orbitAngle:.58;let pitch=this.cameraMode==='orbit'?this.pitch:.76;let desired=[wp[0]+Math.sin(ang)*horizontal,cy+Math.sin(pitch)*vertical,wp[1]-Math.cos(ang)*horizontal];let aim=[lead[0],cy,lead[1]];let k=clamp(dt*(home?1.0:3),0,1);for(let i=0;i<3;i++){this.cam[i]+=(desired[i]-this.cam[i])*k;this.camTarget[i]+=(aim[i]-this.camTarget[i])*k}}
 project(pos){let m=this.lastVP,v=[pos[0],pos[1],pos[2],1],a=[];for(let r=0;r<4;r++)a[r]=m[r]*v[0]+m[4+r]*v[1]+m[8+r]*v[2]+m[12+r]*v[3];if(a[3]<=0)return null;let x=(a[0]/a[3]*.5+.5)*this.canvas.clientWidth,y=(1-(a[1]/a[3]*.5+.5))*this.canvas.clientHeight;return {x,y,visible:a[2]/a[3]<1}}
-render(world,delta,home=false){if(!world)return;this.drawPath=world;this.resize();this.updateCamera(world,delta,home);let gl=this.gl,t=themes[world.theme]||themes.pegboard;gl.clearColor(...t.sky,1);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);let proj=perspective(Math.PI/3,gl.canvas.width/gl.canvas.height,.3,490),v=lookAt(this.cam,this.camTarget);this.lastVP=mm(proj,v);gl.useProgram(this.program);gl.uniformMatrix4fv(this.uniform.vp,false,this.lastVP);gl.uniform3fv(this.uniform.cam,this.cam);gl.uniform3fv(this.uniform.fog,t.sky);let tilt=Math.atan(.24),L=world.length,w=world.width,seg=4.5,focusZ=this.viewZ??42,lo=home?0:Math.max(0,focusZ-78),hi=home?Math.min(L,155):Math.min(L,focusZ+94);
+render(world,delta,home=false){if(!world)return;
+ if(world.mode==='pachinko'){
+  if(!this.pachinkoView)this.pachinkoView=new PachinkoSideView();
+  if(this.pachinkoView.render(world,delta,home,this.focusId,!!this.pachinkoOverview)){
+   this.canvas.style.visibility='hidden';
+   return;
+  }
+ }
+ this.canvas.style.visibility='visible';
+ if(this.pachinkoView)this.pachinkoView.hide();
+ this.drawPath=world;this.resize();this.updateCamera(world,delta,home);let gl=this.gl,t=themes[world.theme]||themes.pegboard;gl.clearColor(...t.sky,1);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);let proj=perspective(Math.PI/3,gl.canvas.width/gl.canvas.height,.3,490),v=lookAt(this.cam,this.camTarget);this.lastVP=mm(proj,v);gl.useProgram(this.program);gl.uniformMatrix4fv(this.uniform.vp,false,this.lastVP);gl.uniform3fv(this.uniform.cam,this.cam);gl.uniform3fv(this.uniform.fog,t.sky);let tilt=Math.atan(.24),L=world.length,w=world.width,seg=4.5,focusZ=this.viewZ??42,lo=home?0:Math.max(0,focusZ-78),hi=home?Math.min(L,155):Math.min(L,focusZ+94);
 // One continuous, swept road and edge system shared by every theme.
 // No overlapping straight boxes or yaw/pitch approximations of a curved deck.
 this.ensureTrack(world,t);
@@ -364,7 +381,136 @@ const fz=L-1;for(let a=0;a<14;a++)for(let b=0;b<2;b++){let x=-w+(a+.5)*(2*w/14),
 // All marbles have the same physical radius; skins are purely cosmetic.
 for(let b of world.marbles){if(b.z<lo-12||b.z>hi+12)continue;let jump=b.air>0&&b.airDuration?Math.sin(Math.PI*(1-b.air/b.airDuration))*3.15:0;let y=world.floorY(b.z)+b.r+.19+b.bounce+jump;this.sphere(b.x,y,b.z,b.r,b.color,1,b.pattern||0,b.accent||'#ffffff',b.z*.16+b.id*.57);if(!b.finished&&[5,6,7,12].includes(b.pattern)){this.sphere(b.x,y-.18,b.z-.85,.14,b.accent||'#ffffff',1)}}this.frame++}
 }
-window.MarbleRenderer=Renderer;window.MarblePalette=themes;
+
+/* A dedicated, traditional upright 2D pachinko cabinet. The simulation stays
+   unchanged: physical course x maps to horizontal screen x, and progress z
+   maps directly to vertical screen y. No orbit perspective or 3D slope. */
+class PachinkoSideView{
+ constructor(){
+  this.canvas=document.createElement('canvas');
+  this.canvas.id='pachinko-sideview';
+  this.canvas.setAttribute('aria-label','Front view of the vertical Pachinko board');
+  document.body.appendChild(this.canvas);
+  this.ctx=this.canvas.getContext('2d',{alpha:false});
+  this.world=null;this.followZ=19;this.lastScale=0;
+ }
+ hide(){this.canvas.style.display='none'}
+ ball(ctx,b,x,y,r){
+  const accent=b.accent||'#ffffff',p=b.pattern||0;
+  ctx.save();
+  ctx.shadowColor='#000b19';ctx.shadowBlur=r*.9;ctx.shadowOffsetY=r*.3;
+  const grad=ctx.createRadialGradient(x-r*.34,y-r*.42,r*.05,x,y,r);
+  grad.addColorStop(0,'#f7feff');grad.addColorStop(.19,b.color);grad.addColorStop(.73,b.color);grad.addColorStop(1,'#07172e');
+  ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fillStyle=grad;ctx.fill();
+  ctx.shadowBlur=0;ctx.shadowOffsetY=0;
+  ctx.beginPath();ctx.arc(x,y,r*.95,0,Math.PI*2);ctx.clip();
+  ctx.translate(x,y);ctx.rotate(b.z*.16+b.id*.57);
+  ctx.strokeStyle=accent;ctx.fillStyle=accent;ctx.globalAlpha=.83;ctx.lineCap='round';
+  const line=(a,b,c,d,w)=>{ctx.beginPath();ctx.moveTo(a,b);ctx.lineTo(c,d);ctx.lineWidth=w;ctx.stroke()};
+  if(p===1||p===10){for(let k=-2;k<=2;k++)line(-r*1.25,k*r*.62-r*.3,r*1.2,k*r*.62+r*.75,r*(p===1?.23:.21))}
+  else if(p===2){for(let k=-2;k<=2;k++){line(k*r*.45,-r,k*r*.45,r,r*.08);line(-r,k*r*.45,r,k*r*.45,r*.08)}}
+  else if(p===3){for(let k=-1;k<=1;k++){line(-r,k*r*.6,0,(k+.32)*r*.6,r*.17);line(0,(k+.32)*r*.6,r,k*r*.6,r*.17)}}
+  else if(p===4){for(let k=0;k<5;k++){ctx.beginPath();ctx.ellipse((k%3-1)*r*.45,(k-2)*r*.30,r*.45,r*.22,k*.55,0,Math.PI*2);ctx.fill()}}
+  else if(p===5||p===12){ctx.lineWidth=r*.17;for(let k=-2;k<=2;k++){ctx.beginPath();ctx.moveTo(-r,k*r*.38);ctx.lineTo(-r*.2,(k-.32)*r*.38);ctx.lineTo(r*.3,(k+.28)*r*.38);ctx.lineTo(r,(k-.2)*r*.38);ctx.stroke()}}
+  else if(p===6){ctx.globalAlpha=.6;ctx.beginPath();ctx.ellipse(0,0,r*1.1,r*.3,-.6,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1;for(let k=0;k<12;k++){let a=k*2.399,radius=r*.84*Math.sqrt((k+.5)/12);ctx.fillRect(Math.cos(a)*radius,Math.sin(a)*radius,r*.1,r*.1)}}
+  else if(p===7){for(let k=-3;k<=3;k++){ctx.beginPath();ctx.moveTo(k*r*.45,r);ctx.quadraticCurveTo(k*r*.41-r*.15,0,k*r*.48,-r);ctx.quadraticCurveTo(k*r*.51+r*.20,-r*.18,(k+.7)*r*.45,r);ctx.fill()}}
+  else if(p===8||p===13){let cell=r*(p===8?.44:.30);for(let i=-5;i<5;i++)for(let j=-5;j<5;j++)if((i+j)%2===0)ctx.fillRect(i*cell,j*cell,cell,cell)}
+  else if(p===9){for(let k=-3;k<=3;k++){ctx.beginPath();ctx.moveTo(k*r*.4,-r);ctx.lineTo(k*r*.37+r*.25,-r*.3);ctx.lineTo(k*r*.39-r*.18,r*.3);ctx.lineTo(k*r*.4,r);ctx.lineWidth=r*.22;ctx.stroke()}}
+  else if(p===11){ctx.lineWidth=r*.13;for(let row=-3;row<4;row++)for(let col=-3;col<4;col++){ctx.beginPath();ctx.arc((col+(row%2)*.5)*r*.46,row*r*.40,r*.28,0,Math.PI);ctx.stroke()}}
+  ctx.globalAlpha=1;ctx.restore();
+  ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.strokeStyle='#d9f6ffac';ctx.lineWidth=Math.max(1,r*.11);ctx.stroke();
+  ctx.beginPath();ctx.ellipse(x-r*.35,y-r*.38,r*.20,r*.12,-.65,0,Math.PI*2);ctx.fillStyle='#ffffffe6';ctx.fill();
+  ctx.beginPath();ctx.arc(x,y,r*.35,0,Math.PI*2);ctx.fillStyle='#06182bd1';ctx.fill();
+  ctx.fillStyle='#ffffff';ctx.font='800 '+Math.max(9,Math.floor(r*.5))+'px system-ui';
+  ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(String(b.id+1),x,y+.5);
+ }
+ render(world,dt,home,focusId,overview){
+  if(!this.ctx)return false;
+  this.canvas.style.display='block';
+  const W=this.canvas.clientWidth||window.innerWidth||390,H=this.canvas.clientHeight||window.innerHeight||800;
+  const dpr=Math.min(window.devicePixelRatio||1,1.8);
+  const rw=Math.max(1,Math.round(W*dpr)),rh=Math.max(1,Math.round(H*dpr));
+  if(this.canvas.width!==rw||this.canvas.height!==rh){this.canvas.width=rw;this.canvas.height=rh}
+  const ctx=this.ctx;ctx.setTransform(dpr,0,0,dpr,0,0);
+  const bg=ctx.createLinearGradient(0,0,W,H);
+  bg.addColorStop(0,'#071a30');bg.addColorStop(.55,'#10152c');bg.addColorStop(1,'#061121');
+  ctx.fillStyle=bg;ctx.fillRect(0,0,W,H);
+  const top=Math.max(95,Math.min(140,H*.14)),bottom=Math.max(150,Math.min(280,H*.30));
+  const centerY=(top+H-bottom)*.5,cx=W*.5,half=world.width;
+  const baseScale=Math.min((W-36)/(half*2+3),Math.max(7,(H-bottom-top)/34));
+  const active=world.marbles.filter(b=>!b.finished),positions=active.map(b=>b.z).sort((a,b)=>a-b);
+  let goal;
+  if(home){goal=19}else if(focusId!==null&&active.some(b=>b.id===focusId)){goal=active.find(b=>b.id===focusId).z+6}
+  else if(positions.length){goal=(positions[0]+positions[positions.length-1])*.5+6}
+  else goal=world.length-10;
+  goal=Math.min(world.length-9,Math.max(19,goal));
+  if(this.world!==world){this.world=world;this.followZ=19}
+  const blend=Math.min(1,Math.max(.02,dt*3.6));
+  this.followZ+=(goal-this.followZ)*blend;
+  let scale=baseScale;
+  if(overview)scale=Math.min((W-28)/(2*half+3),(H-bottom-top-16)/(world.length+3));
+  else if(positions.length>1)scale=Math.min(scale,(H-bottom-top)/Math.max(30,positions[positions.length-1]-positions[0]+16));
+  scale=Math.max(1.6,scale);
+  this.lastScale=scale;
+  const sy=z=>centerY+(z-(overview?world.length*.5:this.followZ))*scale;
+  const sx=x=>cx+x*scale;
+  const left=sx(-half),right=sx(half),yTop=sy(0),yEnd=sy(world.length);
+  // Cabinet frame and a real vertical playing surface bounded by side rails.
+  ctx.save();ctx.shadowColor='#36e6ef77';ctx.shadowBlur=22;
+  ctx.fillStyle='#091b32';ctx.fillRect(left-13,yTop-8,right-left+26,yEnd-yTop+20);
+  ctx.restore();
+  ctx.save();ctx.beginPath();ctx.rect(left,yTop,right-left,yEnd-yTop+10);ctx.clip();
+  const field=ctx.createLinearGradient(left,0,right,0);
+  field.addColorStop(0,'#0c2e4b');field.addColorStop(.25,'#163e58');
+  field.addColorStop(.5,'#1a3850');field.addColorStop(.75,'#163e58');field.addColorStop(1,'#0c2e4b');
+  ctx.fillStyle=field;ctx.fillRect(left,yTop,right-left,yEnd-yTop+15);
+  ctx.strokeStyle='#9ff6ff14';ctx.lineWidth=1;
+  for(let z=Math.max(0,Math.floor((this.followZ-80)/10)*10);z<Math.min(world.length,this.followZ+90);z+=10){
+   let yy=sy(z);ctx.beginPath();ctx.moveTo(left,yy);ctx.lineTo(right,yy);ctx.stroke();
+  }
+  // Seven unmistakable scoring bins at the physical bottom of the board.
+  const slotColors=['#4d9ff1','#63d6cf','#f3c45b','#ffed9b','#f3c45b','#63d6cf','#4d9ff1'];
+  const slots=[100,250,500,1000,500,250,100];
+  let binStart=sy(world.length-9),bw=(right-left)/7;
+  for(let i=0;i<7;i++){
+   let x=left+i*bw;
+   ctx.fillStyle=slotColors[i]+'b3';ctx.fillRect(x,binStart,bw,yEnd-binStart+13);
+   ctx.strokeStyle='#f3ffff6b';ctx.lineWidth=1.1;ctx.strokeRect(x+.5,binStart+.5,bw-1,yEnd-binStart+12);
+   ctx.fillStyle=i===3?'#28263e':'#082b40';ctx.font='900 '+Math.max(8,Math.min(16,bw*.39))+'px system-ui';ctx.textAlign='center';
+   ctx.fillText(String(slots[i]),x+bw*.5,binStart+Math.min(24,(yEnd-binStart)*.42));
+  }
+  // Contact pegs: circular objects in an upright front-facing x/z plane.
+  for(const peg of world.obstacles){
+   if(peg.type!=='peg')continue;
+   const yy=sy(peg.z);if(yy<-28||yy>H+28)continue;
+   const x=sx(peg.x),r=Math.max(2.8,peg.r*scale);
+   ctx.beginPath();ctx.arc(x+1.5,yy+2.8,r*1.15,0,Math.PI*2);ctx.fillStyle='#041225aa';ctx.fill();
+   const metal=ctx.createRadialGradient(x-r*.4,yy-r*.47,0,x,yy,r*1.15);
+   metal.addColorStop(0,'#ffffe5');metal.addColorStop(.35,'#ffd38c');metal.addColorStop(.78,'#ba8354');metal.addColorStop(1,'#614267');
+   ctx.beginPath();ctx.arc(x,yy,r,0,Math.PI*2);ctx.fillStyle=metal;ctx.fill();
+   ctx.strokeStyle='#fff1cb77';ctx.lineWidth=Math.max(1,scale*.07);ctx.stroke();
+  }
+  // Launch lip visually marks the point where all balls enter the vertical board.
+  const lipY=sy(10);
+  if(lipY>0&&lipY<H){ctx.fillStyle='#e8bc7a';ctx.fillRect(left+6,lipY,right-left-12,3)}
+  for(const b of world.marbles){
+   const yy=sy(b.z);if(yy<-32||yy>H+32)continue;
+   this.ball(ctx,b,sx(b.x),yy,Math.max(3,b.r*scale*1.12));
+  }
+  ctx.restore();
+  // Tall side rails remain above marbles to frame the whole game.
+  ctx.strokeStyle='#77eaf4';ctx.lineWidth=Math.max(3,scale*.28);
+  ctx.beginPath();ctx.moveTo(left,yTop);ctx.lineTo(left,yEnd);ctx.moveTo(right,yTop);ctx.lineTo(right,yEnd);ctx.stroke();
+  ctx.strokeStyle='#ffe6a6';ctx.lineWidth=Math.max(1.3,scale*.10);
+  ctx.beginPath();ctx.moveTo(left-3,yTop);ctx.lineTo(left-3,yEnd);ctx.moveTo(right+3,yTop);ctx.lineTo(right+3,yEnd);ctx.stroke();
+  // Subtle fixed label makes the front-facing game mode immediately recognizable.
+  ctx.textAlign='center';ctx.fillStyle='#b3e5ef';ctx.font='800 11px system-ui';
+  ctx.fillText(overview?'FULL BOARD · FRONT VIEW':'FRONT VIEW · FOLLOWING THE DROP',W*.5,Math.max(95,top-12));
+  return true;
+ }
+}
+
+window.MarbleRenderer=Renderer;window.MarblePalette=themes;window.PachinkoSideView=PachinkoSideView;
 })();
 
 </script><script>
@@ -401,7 +547,7 @@ function coinHTML(){return `<span class="coin" aria-hidden="true"></span>${save.
 function btn(text,act,klass=''){return `<button type="button" class="btn ${klass}" data-action="${act}">${text}</button>`}
 function commonHead(title,subtitle,back='home'){return `<div class="panel-head"><div><div class="eyebrow">MARBLE RUSH 3D</div><h2>${title}</h2><p>${subtitle}</p></div><button class="icon-btn" type="button" data-action="${back}" title="Close" aria-label="Close">×</button></div>`}
 function setScreen(s){state.screen=s;state.lastHUD=-1;renderUI()}
-function home(){return `<div class="hero-shell"><div class="topbar"><div class="logo"><div class="logo-mark"></div><div class="brand">MARBLE<br><span>RUSH 3D</span></div></div><div class="wallet" aria-label="Coin balance">${coinHTML()}</div></div><div class="hero-main"><div class="hero-copy"><div class="eyebrow">MARBLE RACES · TEAMS · PACHINKO</div><h1>ROLL.<br>RACE.<br><em>REPEAT.</em></h1><p>Choose one of six marbles, race through winding 3D tracks and real tunnel sections, or try Pachinko. No two courses are alike.</p><div class="hero-cta">${btn('▶ &nbsp; START RACING','setup','primary lg')}${btn('✦ &nbsp; PATTERN SHOP','shop','ghost lg')}</div></div></div><div class="bottom-nav"><button class="nav-tile" data-action="setup">🏁 &nbsp; NEW RACE<small>2–6 marbles</small></button><button class="nav-tile" data-action="shop">✦ &nbsp; UNLOCKS<small>Patterns & tracks</small></button><button class="nav-tile" data-action="records">🏆 &nbsp; RECORDS<small>Your stats</small></button><button class="nav-tile" data-action="settings">⚙ &nbsp; SETTINGS<small>Sound & motion</small></button></div></div><div class="version-tag">OFFLINE 3D PROTOTYPE • v0.6</div>`}
+function home(){return `<div class="hero-shell"><div class="topbar"><div class="logo"><div class="logo-mark"></div><div class="brand">MARBLE<br><span>RUSH 3D</span></div></div><div class="wallet" aria-label="Coin balance">${coinHTML()}</div></div><div class="hero-main"><div class="hero-copy"><div class="eyebrow">MARBLE RACES · TEAMS · PACHINKO</div><h1>ROLL.<br>RACE.<br><em>REPEAT.</em></h1><p>Choose one of six marbles, race through winding 3D tracks and real tunnel sections, or try Pachinko. No two courses are alike.</p><div class="hero-cta">${btn('▶ &nbsp; START RACING','setup','primary lg')}${btn('✦ &nbsp; PATTERN SHOP','shop','ghost lg')}</div></div></div><div class="bottom-nav"><button class="nav-tile" data-action="setup">🏁 &nbsp; NEW RACE<small>2–6 marbles</small></button><button class="nav-tile" data-action="shop">✦ &nbsp; UNLOCKS<small>Patterns & tracks</small></button><button class="nav-tile" data-action="records">🏆 &nbsp; RECORDS<small>Your stats</small></button><button class="nav-tile" data-action="settings">⚙ &nbsp; SETTINGS<small>Sound & motion</small></button></div></div><div class="version-tag">OFFLINE 3D PROTOTYPE • v0.7</div>`}
 function setup(){let themes=COURSES.map(c=>{let locked=!save.unlockedCourses.includes(c.id);return `<button type="button" class="course-option ${state.course===c.id?'active':''} ${locked?'locked':''}" data-action="course" data-value="${c.id}"><span class="pict">${c.symbol}</span>${c.title}${locked?`<small>🔒 ${c.cost} coins</small>`:'<small>✓ Unlocked</small>'}</button>`}).join('');return `<div class="panel wide clickable">${commonHead('Set up your race','One device. All marbles. Unlimited bragging rights.')}<div class="formgrid"><div class="field"><div class="field-title">GAME MODE</div><div class="segment"><button data-action="mode" data-value="ffa" class="${state.mode==='ffa'?'active':''}">Free for All</button><button data-action="mode" data-value="teams" class="${state.mode==='teams'?'active':''}">Teams</button></div></div><div class="field"><div class="field-title">PLAYERS <small>2–6 competitors</small></div><div class="range-row"><input aria-label="Number of players" type="range" min="2" max="6" step="1" value="${state.count}" id="player-count"><div class="count" id="count-label">${state.count}</div></div></div>${state.mode==='teams'?`<div class="field"><div class="field-title">NUMBER OF TEAMS</div><div class="segment">${[2,3,4].map(n=>`<button data-action="teams" data-value="${n}" ${state.count<n?'disabled':''} class="${state.teams===n?'active':''}">${n} teams</button>`).join('')}</div></div>`:''}<div class="field"><div class="field-title">RACE LENGTH</div><div class="segment">${[['sprint','Sprint'],['standard','Standard'],['epic','Epic']].map(([v,n])=>`<button data-action="length" data-value="${v}" class="${state.length===v?'active':''}">${n}</button>`).join('')}</div></div><div class="field full-row"><div class="field-title">CHOOSE COURSE TYPE <small>New layout every round</small></div><div class="course-options">${themes}</div>${state.course==='pachinko'?'<p class="hint" style="margin-top:10px">🎰 Pachinko Palace: seven slots (100 to 1,000 points). High score wins. Teams use their average slot scores.</p>':''}</div></div><div class="form-foot"><div class="hint"><strong>${state.count} marbles</strong> · ${state.mode==='teams'?state.teams+' teams':'Free for All'} · ${state.length} course<br>All marble stats are equal. Cosmetics never affect racing.</div>${btn('NEXT: PICK MARBLES →','roster','primary lg')}</div></div>`}
 function roster(){
  const rows=state.players.slice(0,state.count).map((p,i)=>{
@@ -418,7 +564,7 @@ function roster(){
   '<div class="roster">'+rows+'</div><div class="form-foot"><span class="hint">Colors are always free. Earn coins to unlock new patterns.<br>Every marble has identical racing physics.</span>'+
   btn('PREVIEW COURSE →','preview','primary lg')+'</div></div>';
 }
-function preview(){let c=COURSES.find(x=>x.id===state.world.theme);return `<div class="panel narrow clickable" style="margin-left:auto;margin-right:max(14px,4vw)">${commonHead('Course ready','The 3D track behind this window was generated for your race.','roster')}<div class="field" style="margin-bottom:12px"><div class="eyebrow">${esc(c.title.toUpperCase())}</div><div style="font-size:31px;font-weight:950;margin:5px 0">${c.symbol} &nbsp;${esc(c.title)}</div><div class="hint">${state.world.obstacles.length} obstacle modules · Seed #${state.world.seed.toString(36).toUpperCase()} · ${state.count} contenders</div></div><p class="hint">${state.world.mode==='pachinko'?'Highest scoring slot wins. The center is worth 1,000 points; ties go to the quicker marble. Teams use average scores.':'Race cameras follow the action automatically.'} During the race, drag to orbit, scroll or pinch to zoom, or tap a racer in the leaderboard.</p><div class="form-foot">${btn('↻ REGENERATE','regen','ghost')}${btn('▶ &nbsp; LAUNCH RACE','launch','primary lg')}</div></div>`}
+function preview(){let c=COURSES.find(x=>x.id===state.world.theme);return `<div class="panel narrow clickable" style="margin-left:auto;margin-right:max(14px,4vw)">${commonHead('Course ready',state.world.mode==='pachinko'?'A traditional, upright Pachinko peg board is ready to play.':'The 3D track behind this window was generated for your race.','roster')}<div class="field" style="margin-bottom:12px"><div class="eyebrow">${esc(c.title.toUpperCase())}</div><div style="font-size:31px;font-weight:950;margin:5px 0">${c.symbol} &nbsp;${esc(c.title)}</div><div class="hint">${state.world.obstacles.length} obstacle modules · Seed #${state.world.seed.toString(36).toUpperCase()} · ${state.count} contenders</div></div><p class="hint">${state.world.mode==='pachinko'?'Highest scoring slot wins. The center is worth 1,000 points; ties go to the quicker marble. Teams use average scores.':'Race cameras follow the action automatically.'} ${state.world.mode==='pachinko'?'Watch the front-facing board follow your marbles downward, or switch to Full Board to see everything. Tap a leaderboard racer to follow them.':'During the race, drag to orbit, scroll or pinch to zoom, or tap a racer in the leaderboard.'}</p><div class="form-foot">${btn('↻ REGENERATE','regen','ghost')}${btn('▶ &nbsp; LAUNCH RACE','launch','primary lg')}</div></div>`}
 function shop(){
  const isSkins=state.shopTab==='marbles',list=isSkins?SKINS:COURSES;
  const cards=list.map((item,i)=>{
@@ -482,7 +628,7 @@ function leaderboardRows(w){
  let order=[...w.marbles].sort((a,b)=>w.mode==='pachinko'&&w.done?(a.place??99)-(b.place??99):Number(b.finished)-Number(a.finished)||((a.finished&&b.finished)?(w.mode==='pachinko'?b.score-a.score:a.time-b.time):b.z-a.z));
  return order.slice(0,6).map((b,i)=>`<div class="leader-row ${state.selectedFollow===b.id?'selected':''}" data-follow="${b.id}" title="Follow ${esc(b.name)}"><span class="place">${i+1}</span><span class="small-dot" style="background:${b.color}"></span><span class="nm">${esc(b.name)}</span><div class="rail"><div class="fill" style="width:${Math.round(clamp(b.z/w.length,0,1)*100)}%;background:${b.color}"></div></div>${w.mode==='pachinko'&&b.finished?'<strong style="color:#ffe18b;font-size:10px">'+b.score+'</strong>':''}</div>`).join('')
 }
-function hudHTML(){let w=state.world,c=COURSES.find(x=>x.id===w.theme);return `<div class="hud-top"><div class="hud-pill"><div class="hud-title">${esc(c.title.toUpperCase())}</div><div class="hud-sub">${state.mode==='ffa'?'FREE FOR ALL':`${state.teams}-TEAM BATTLE`} · ${w.marbles.length} MARBLES</div></div><div class="hud-pill" style="text-align:right"><div class="timer" id="timer">${formatTime(w.time)}</div><div class="hud-sub" id="race-status">${state.countdown>0?'GET READY':'RACE IN PROGRESS'}</div></div></div><div class="touch-help" id="touch-help">DRAG TO ORBIT · SCROLL / PINCH TO ZOOM</div><div class="hud-bottom"><div class="leaderboard"><div class="lead-head"><span>LIVE STANDINGS</span><span id="finished-count">0 / ${w.marbles.length} FINISHED</span></div><div id="leader-rows">${leaderboardRows(w)}</div><div class="lead-footer" id="lead-footer">${w.mode==='pachinko'?'SLOTS: 100 · 250 · 500 · 1000 · 500 · 250 · 100':'Tap a player to follow'}</div></div><div class="hud-controls"><button data-action="camera" class="${state.selectedFollow===null?'active':''}" id="auto-camera">◉ AUTO CAMERA</button><button data-action="sound">${save.sound?'♪ SOUND ON':'♪ MUTED'}</button><button data-action="pause" id="pause-button">Ⅱ PAUSE</button></div></div>${state.countdown>0?`<div class="race-toast" id="countdown">${Math.ceil(state.countdown)}</div>`:''}`}
+function hudHTML(){let w=state.world,c=COURSES.find(x=>x.id===w.theme);return `<div class="hud-top"><div class="hud-pill"><div class="hud-title">${esc(c.title.toUpperCase())}</div><div class="hud-sub">${state.mode==='ffa'?'FREE FOR ALL':`${state.teams}-TEAM BATTLE`} · ${w.marbles.length} MARBLES</div></div><div class="hud-pill" style="text-align:right"><div class="timer" id="timer">${formatTime(w.time)}</div><div class="hud-sub" id="race-status">${state.countdown>0?'GET READY':'RACE IN PROGRESS'}</div></div></div><div class="touch-help" id="touch-help">${w.mode==='pachinko'?'FRONT VIEW · WATCH THE MARBLES DROP':'DRAG TO ORBIT · SCROLL / PINCH TO ZOOM'}</div><div class="hud-bottom"><div class="leaderboard"><div class="lead-head"><span>LIVE STANDINGS</span><span id="finished-count">0 / ${w.marbles.length} FINISHED</span></div><div id="leader-rows">${leaderboardRows(w)}</div><div class="lead-footer" id="lead-footer">${w.mode==='pachinko'?'SLOTS: 100 · 250 · 500 · 1000 · 500 · 250 · 100':'Tap a player to follow'}</div></div><div class="hud-controls">${w.mode==='pachinko'?`<button data-action="camera" class="${state.selectedFollow===null&&!renderer.pachinkoOverview?'active':''}" id="auto-camera">◉ FOLLOW DROP</button><button data-action="pachinko-overview" class="${renderer.pachinkoOverview?'active':''}">▣ FULL BOARD</button>`:`<button data-action="camera" class="${state.selectedFollow===null?'active':''}" id="auto-camera">◉ AUTO CAMERA</button>`}<button data-action="sound">${save.sound?'♪ SOUND ON':'♪ MUTED'}</button><button data-action="pause" id="pause-button">Ⅱ PAUSE</button></div></div>${state.countdown>0?`<div class="race-toast" id="countdown">${Math.ceil(state.countdown)}</div>`:''}`}
 function results(){let w=state.world,sorted=[...w.marbles].sort((a,b)=>(a.place??999)-(b.place??999)),winner=sorted[0],teamData=state.mode==='teams'?Array.from({length:state.teams},(_,i)=>{let group=w.marbles.filter(m=>m.team===i);return {i,score:group.reduce((s,m)=>s+(w.mode==='pachinko'?m.score:(w.marbles.length-(m.place??w.marbles.length)+1)),0)/Math.max(1,group.length),time:group.reduce((sum,m)=>sum+(m.time??9999),0)/Math.max(1,group.length)}}).sort((a,b)=>b.score-a.score||a.time-b.time):null;let winText=state.mode==='ffa'?winner.name:`Team ${teamData[0].i+1}`;let table=sorted.map((b,i)=>`<div class="result-row"><span class="place">${i+1}.</span><span class="small-dot" style="background:${b.color};width:14px;height:14px;border-radius:50%"></span><span class="name">${esc(b.name)} ${state.mode==='teams'?`<span class="badge">T${b.team+1}</span>`:''}</span><span class="time">${w.mode==='pachinko'?b.score+' pts · '+formatTime(b.time):formatTime(b.time)}</span></div>`).join('');return `<div class="panel narrow clickable">${commonHead('Race results','The course has spoken. Here is your final podium.')}<div class="result-winner"><div class="trophy">🏆</div><div class="eyebrow">${state.mode==='teams'?'WINNING TEAM':w.mode==='pachinko'?'PACHINKO CHAMPION':'THE CHAMPION'}</div><div class="winner-name">${esc(winText)}</div><div class="hint">${state.mode==='teams'?`Average ${w.mode==='pachinko'?'slot score':'points'}: ${teamData[0].score.toFixed(w.mode==='pachinko'?0:2)}${teamData.length>1?` · Runner-up: Team ${teamData[1].i+1} (${teamData[1].score.toFixed(2)})`:''}`:w.mode==='pachinko'?`Winning slot: ${winner.score} points · ${formatTime(winner.time)}`:`Winning time: ${formatTime(winner.time)}`}</div></div><div class="payout"><span class="coin"></span> +${w.coinsEarned} coins earned!</div><div class="result-table">${table}</div><div class="result-actions">${btn('↻ REMATCH','rematch','primary')}${btn('NEW SETUP','setup','ghost')}${btn('HOME','home','ghost')}</div><p class="notice" style="text-align:center;margin-bottom:0">Course seed: ${w.seed.toString(36).toUpperCase()} · Shared coins: ${save.coins}</p></div>`}
 function renderUI(){hud.innerHTML='';hud.classList.add('hidden');if(state.screen==='racing'){app.innerHTML='';hud.classList.remove('hidden');hud.innerHTML=hudHTML();return}let content=({home,setup,roster,preview,shop,records,settings,results})[state.screen];app.innerHTML=content?content():home();drawToast()}
 // Pseudo-random deterministic course generator. Every module has a connected, level track.
@@ -583,13 +729,13 @@ let active=world.marbles.filter(b=>!b.finished);for(let i=0;i<active.length;i++)
 if(world.finishOrder.length===world.marbles.length||world.time>Math.max(150,world.length*.85)){for(let b of world.marbles)if(!b.finished){b.finished=true;b.place=world.finishOrder.length+1;world.finishOrder.push(b.id)}if(world.mode==='pachinko'){let byScore=[...world.marbles].sort((a,b)=>b.score-a.score||(a.time??Infinity)-(b.time??Infinity));byScore.forEach((b,i)=>b.place=i+1)}world.done=true}}
 function seedNow(){return ((Date.now()>>>0)^(Math.random()*4294967295>>>0))>>>0}
 function makeDemo(){state.demoSeed=seedNow();state.world=createWorld('funnel',state.demoSeed,'standard',state.players.slice(0,6));state.simMode='demo';state.selectedFollow=null;renderer.setMode('auto');state.running=true;state.started=true;state.paused=false}
-function racePreview(){if(state.mode==='teams'&&!Array.from({length:state.teams},(_,t)=>state.players.slice(0,state.count).some(p=>p.team%state.teams===t)).every(Boolean)){toast('Assign at least one player to each team.');return}let c=save.unlockedCourses.includes(state.course)?state.course:'pegboard';state.world=createWorld(c,seedNow(),state.length,state.players.slice(0,state.count).map((p,i)=>({...p,team:p.team%state.teams})));state.simMode='preview';state.started=false;state.running=false;state.paused=false;state.selectedFollow=null;renderer.setMode('auto');setScreen('preview')}
+function racePreview(){if(state.mode==='teams'&&!Array.from({length:state.teams},(_,t)=>state.players.slice(0,state.count).some(p=>p.team%state.teams===t)).every(Boolean)){toast('Assign at least one player to each team.');return}let c=save.unlockedCourses.includes(state.course)?state.course:'pegboard';state.world=createWorld(c,seedNow(),state.length,state.players.slice(0,state.count).map((p,i)=>({...p,team:p.team%state.teams})));state.simMode='preview';state.started=false;state.running=false;state.paused=false;state.selectedFollow=null;renderer.pachinkoOverview=false;renderer.setMode('auto');setScreen('preview')}
 function launch(){state.simMode='race';state.running=true;state.paused=false;state.started=false;state.countdown=3.65;state.finishShowing=false;state.lastHUD=-1;state.selectedFollow=null;renderer.setMode('auto');setScreen('racing');beep(520)}
 function raceFinished(){if(state.finishShowing)return;state.finishShowing=true;state.running=false;let w=state.world;let today=new Date().toLocaleDateString('en-CA');let bonus=save.lastBonus===today?0:25;let award=20+(bonus||0)+15;save.coins+=award;w.coinsEarned=award;save.lastBonus=today;save.stats.races++;if(state.mode==='ffa')save.stats.wins++;let winner=w.marbles.find(b=>b.place===1);if(winner?.time!=null)save.stats.bestTime=save.stats.bestTime==null?winner.time:Math.min(save.stats.bestTime,winner.time);persist();beep(610,.2);setTimeout(()=>beep(790,.2),140);setScreen('results')}
 function updateHUD(){let w=state.world;if(!w)return;let time=$('#timer');if(time)time.textContent=formatTime(w.time);let st=$('#race-status');if(st)st.textContent=state.countdown>0?'GET READY':`${w.finishOrder.length} FINISHED`;let fin=$('#finished-count');if(fin)fin.textContent=`${w.finishOrder.length} / ${w.marbles.length} FINISHED`;let rows=$('#leader-rows');if(rows)rows.innerHTML=leaderboardRows(w);let counter=$('#countdown');if(counter)counter.textContent=state.countdown>.6?Math.ceil(state.countdown-.6):'GO!';if(state.countdown<=0&&counter)counter.remove()}
-function handle(action,data={}){switch(action){case 'home':makeDemo();setScreen('home');break;case 'setup':if(state.simMode==='race'&&state.screen!=='results'){makeDemo()}setScreen('setup');break;case 'roster':setScreen('roster');break;case 'preview':racePreview();break;case 'regen':racePreview();break;case 'launch':launch();break;case 'mode':state.mode=data.value;setScreen('setup');break;case 'teams':state.teams=+data.value;state.players.forEach((p,i)=>p.team=i%state.teams);setScreen('setup');break;case 'length':state.length=data.value;setScreen('setup');break;case 'course':if(!save.unlockedCourses.includes(data.value)){toast('Unlock this course in the Marble Market first.');return}state.course=data.value;setScreen('setup');break;case 'shop':state.shopTab='marbles';setScreen('shop');break;case 'shoptab':state.shopTab=data.value;setScreen('shop');break;case 'color-preset':{let i=+data.player;if(i>=0&&i<state.count&&Number.isInteger(i)){state.players[i].color=normalizeColor(data.value,state.players[i].color);refreshPlayerCard(i);savePlayerLooks()}break}case 'buy':{let isSkin=data.type==='skin',item=(isSkin?SKINS:COURSES).find(x=>x.id===data.value);if(!item)return;let arr=isSkin?save.unlockedSkins:save.unlockedCourses;if(arr.includes(item.id)){toast('Already unlocked!');return}if(save.coins<item.cost){toast(`Need ${item.cost-save.coins} more coins for ${item.title}.`);return}save.coins-=item.cost;arr.push(item.id);persist();setScreen('shop');toast(`Unlocked ${item.title}!`);beep(880);break}case 'records':setScreen('records');break;case 'settings':setScreen('settings');break;case 'camera':state.selectedFollow=null;renderer.setMode('auto');updateHUD();break;case 'sound':save.sound=!save.sound;persist();renderUI();break;case 'pause':state.paused=true;showPause();break;case 'resume':state.paused=false;$('#pause-shade')?.remove();break;case 'rematch':racePreview();break}}
+function handle(action,data={}){switch(action){case 'home':makeDemo();setScreen('home');break;case 'setup':if(state.simMode==='race'&&state.screen!=='results'){makeDemo()}setScreen('setup');break;case 'roster':setScreen('roster');break;case 'preview':racePreview();break;case 'regen':racePreview();break;case 'launch':launch();break;case 'mode':state.mode=data.value;setScreen('setup');break;case 'teams':state.teams=+data.value;state.players.forEach((p,i)=>p.team=i%state.teams);setScreen('setup');break;case 'length':state.length=data.value;setScreen('setup');break;case 'course':if(!save.unlockedCourses.includes(data.value)){toast('Unlock this course in the Marble Market first.');return}state.course=data.value;setScreen('setup');break;case 'shop':state.shopTab='marbles';setScreen('shop');break;case 'shoptab':state.shopTab=data.value;setScreen('shop');break;case 'color-preset':{let i=+data.player;if(i>=0&&i<state.count&&Number.isInteger(i)){state.players[i].color=normalizeColor(data.value,state.players[i].color);refreshPlayerCard(i);savePlayerLooks()}break}case 'buy':{let isSkin=data.type==='skin',item=(isSkin?SKINS:COURSES).find(x=>x.id===data.value);if(!item)return;let arr=isSkin?save.unlockedSkins:save.unlockedCourses;if(arr.includes(item.id)){toast('Already unlocked!');return}if(save.coins<item.cost){toast(`Need ${item.cost-save.coins} more coins for ${item.title}.`);return}save.coins-=item.cost;arr.push(item.id);persist();setScreen('shop');toast(`Unlocked ${item.title}!`);beep(880);break}case 'records':setScreen('records');break;case 'settings':setScreen('settings');break;case 'camera':state.selectedFollow=null;renderer.setMode('auto');renderer.pachinkoOverview=false;renderUI();break;case 'pachinko-overview':if(state.world?.mode==='pachinko'){renderer.pachinkoOverview=!renderer.pachinkoOverview;if(renderer.pachinkoOverview){state.selectedFollow=null;renderer.setMode('auto')}renderUI()}break;case 'sound':save.sound=!save.sound;persist();renderUI();break;case 'pause':state.paused=true;showPause();break;case 'resume':state.paused=false;$('#pause-shade')?.remove();break;case 'rematch':racePreview();break}}
 function showPause(){let d=document.createElement('div');d.id='pause-shade';d.className='paused-shade';d.innerHTML=`<div class="paused-card"><h2>Ⅱ &nbsp; PAUSED</h2><p class="hint">Your marbles are taking a breather.</p>${btn('▶ RESUME RACE','resume','primary lg')}${btn('QUIT TO HOME','home','ghost')}</div>`;overlay.appendChild(d)}
-app.addEventListener('click',e=>{let b=e.target.closest('[data-action]');if(!b||b.disabled)return;beep(460,.04,.009);handle(b.dataset.action,b.dataset)});overlay.addEventListener('click',e=>{let b=e.target.closest('[data-action]');if(b&&!b.disabled)handle(b.dataset.action,b.dataset);let f=e.target.closest('[data-follow]');if(f){let n=+f.dataset.follow;state.selectedFollow=n;renderer.setMode('focus',n);updateHUD()}});
+app.addEventListener('click',e=>{let b=e.target.closest('[data-action]');if(!b||b.disabled)return;beep(460,.04,.009);handle(b.dataset.action,b.dataset)});overlay.addEventListener('click',e=>{let b=e.target.closest('[data-action]');if(b&&!b.disabled)handle(b.dataset.action,b.dataset);let f=e.target.closest('[data-follow]');if(f){let n=+f.dataset.follow;state.selectedFollow=n;renderer.pachinkoOverview=false;renderer.setMode('focus',n);renderUI()}});
 app.addEventListener('input',e=>{if(e.target.id==='player-count'){state.count=+e.target.value;$('#count-label').textContent=state.count;if(state.teams>state.count){state.teams=state.count;state.players.forEach((p,i)=>p.team=i%state.teams)}}let i=e.target.dataset.playerName;if(i!==undefined)state.players[+i].name=e.target.value;let c=e.target.dataset.playerColor;if(c!==undefined){state.players[+c].color=normalizeColor(e.target.value,state.players[+c].color);refreshPlayerCard(+c);savePlayerLooks()}if(e.target.id==='shop-color'){state.shopColor=normalizeColor(e.target.value,state.shopColor);app.querySelectorAll('[data-shop-skin]').forEach(el=>{let sw=el.querySelector('.marble-swatch');if(sw)sw.style.background=skinPreviewCSS(el.dataset.shopSkin,state.shopColor)})}});
 app.addEventListener('change',e=>{if(e.target.id==='player-count')setScreen('setup');let p=e.target.dataset.skin;if(p!==undefined&&save.unlockedSkins.includes(e.target.value)){state.players[+p].skin=e.target.value;refreshPlayerCard(+p);savePlayerLooks()}let team=e.target.dataset.team;if(team!==undefined)state.players[+team].team=+e.target.value;if(e.target.id==='sound-setting'){save.sound=e.target.checked;persist()}if(e.target.id==='motion-setting'){save.reducedMotion=e.target.checked;persist()}});
 window.addEventListener('keydown',e=>{if(e.key==='Escape'&&state.screen==='racing')handle(state.paused?'resume':'pause');if(e.key==='Enter'&&state.screen==='preview')launch()});
