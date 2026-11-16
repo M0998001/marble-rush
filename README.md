@@ -4,11 +4,28 @@ A shared-screen, arcade-style **3D marble racing game** built for mobile Safari,
 
 ### ▶️ Play
 
-**[Play Marble Rush 3D](https://m0998001.github.io/marble-rush/?v=4)**
+**[Play Marble Rush 3D](https://m0998001.github.io/marble-rush/?v=5)**
 
 No account or installation required. Each visitor plays a local session on their own device; the link does not connect friends into one online race.
 
-## What's new in v0.3
+## v0.4 — Visual track geometry repair
+
+A phone screenshot revealed a major presentation defect in v0.3: the visual road was constructed from independently rotated rectangular segments. Those blocks were yawed in the wrong direction relative to the curved path, leading to jagged edges, disconnected-looking railings, and apparent gaps.
+
+**The v0.4 renderer uses a different approach:**
+
+- **Continuous road meshes:** The deck, underbody, shoulders, rail faces, top caps and lane lines are swept along exactly the same centerline as the marble simulation. No step-shaped deck sections or separated edge boards.
+- **Correct curvature alignment:** Fixed a sign error in how rendered track objects rotate around the curved path.
+- **Physical/visual correspondence:** Splitters, spinning arms, gates, side baffles and curved bowl barriers are drawn from the same endpoints as their collision segments.
+- **Tunnel geometry:** Tunnel side walls and roof shoulders are continuous meshes that follow the track, replacing repeated disconnected boxes. Arched frames remain to communicate enclosure.
+- **Less visual clutter:** Removed non-colliding overhead bars and reduced overly large peg decorations.
+- **Clearer mobile screen:** Reduced the size of the iPhone race HUD, preserving more room for the course.
+
+**Testing:** In addition to geometry seam/tangent calculations and render-path smoke checks for all ten environments, 1,200 simulated races passed across course types, 2–6 players and all three race lengths. These simulations cannot prove the visual quality or rendering performance of a physical iPhone. Screenshots and on-device feedback remain essential.
+
+## Previous v0.3 updates
+
+
 
 - **Curved courses:** Tracks now follow smooth, randomized, 3D S-bends. Cameras, guardrails, scenery, ramps and marbles follow the same track coordinates, not just a straight slope.
 - **Real tunnel passages:** Funnel Frenzy and other later stages include tunnels with continuous side walls, overhead roof bands, arched ribs, and navigable entrances/exits. A dedicated **Tunnel Twister** course is free to try.

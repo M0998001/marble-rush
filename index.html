@@ -5,6 +5,12 @@
 @media(max-width:420px){.nav-tile small{display:none}.nav-tile{font-size:12px;padding:12px 6px}.hero-copy p{font-size:13px}.hero-copy h1{font-size:53px}.course-options{grid-template-columns:repeat(2,1fr)}.course-option{min-height:73px}.course-option .pict{display:inline-block;margin:0 6px 0 0}.shop-grid{gap:8px}.shop-card{padding:9px}.leaderboard{width:58vw}.leader-row{font-size:10px}.leader-row .nm{width:43px}.hud-controls button{min-width:75px;font-size:11px}.panel-head h2{font-size:25px}}
 @media(orientation:landscape) and (max-height:540px){.hero-main{padding:0}.hero-copy h1{font-size:52px}.hero-copy p{font-size:13px;max-width:390px}.bottom-nav{padding-bottom:2px}.topbar .logo .brand{font-size:21px}.panel{max-height:95dvh}.panel-head{margin-bottom:10px}.hud{padding:8px}.hud-top .hud-pill{padding:7px}.hud-bottom .leaderboard{max-height:54dvh;overflow-y:auto}.race-toast{top:35%}}
 
+@media(max-width:730px){
+ .hud-pill{padding:7px 9px}.hud-title{font-size:10px}.hud-sub{font-size:9px}.timer{font-size:21px}
+ .touch-help{display:none}.leaderboard{padding:8px;width:min(53vw,210px)}
+ .lead-head{font-size:9px;letter-spacing:.4px}.leader-row{padding:3px 2px;font-size:10px}
+ .lead-footer{font-size:9px}.hud-controls{gap:5px}.hud-controls button{padding:8px 9px;min-width:90px;font-size:10px}
+}
 </style></head><body><canvas id="scene" aria-label="3D marble racing arena"></canvas><div id="overlay"><div id="hud" class="hud hidden"></div></div><main id="app"></main><script>
 /* Marble Rush 3D — original, dependency-free WebGL 1 renderer */
 (function(){
@@ -28,7 +34,7 @@ function sphereMesh(lat=13,lon=20){let p=[],n=[],idx=[];for(let i=0;i<=lat;i++){
 function cylinderMesh(sides=18){let p=[],n=[],idx=[];for(let i=0;i<=sides;i++){let a=TAU*i/sides,x=Math.cos(a)*.5,z=Math.sin(a)*.5;for(let y of [-.5,.5]){p.push(x,y,z);n.push(x*2,0,z*2)}}for(let i=0;i<sides;i++){let a=2*i,b=a+2;idx.push(a,a+1,b,b,a+1,b+1)}let b=p.length/3;p.push(0,.5,0);n.push(0,1,0);for(let i=0;i<=sides;i++){let a=TAU*i/sides;p.push(.5*Math.cos(a),.5,.5*Math.sin(a));n.push(0,1,0)}for(let i=0;i<sides;i++)idx.push(b,b+2+i,b+1+i);b=p.length/3;p.push(0,-.5,0);n.push(0,-1,0);for(let i=0;i<=sides;i++){let a=TAU*i/sides;p.push(.5*Math.cos(a),-.5,.5*Math.sin(a));n.push(0,-1,0)}for(let i=0;i<sides;i++)idx.push(b,b+1+i,b+2+i);return meshData(p,n,idx)}
 function torusMesh(around=32,tube=10){let p=[],n=[],idx=[];for(let i=0;i<=around;i++)for(let j=0;j<=tube;j++){let a=TAU*i/around,b=TAU*j/tube,rad=1+.12*Math.cos(b);p.push(rad*Math.cos(a),.12*Math.sin(b),rad*Math.sin(a));n.push(Math.cos(a)*Math.cos(b),Math.sin(b),Math.sin(a)*Math.cos(b))}for(let i=0;i<around;i++)for(let j=0;j<tube;j++){let a=i*(tube+1)+j,b=a+tube+1;idx.push(a,a+1,b,b,a+1,b+1)}return meshData(p,n,idx)}
 const themes={
-pegboard:{track:'#a4714d',rail:'#f3c58e',trim:'#fff1af',peg:'#f18556',floor:'#563d36',sky:[.09,.095,.16]},
+pegboard:{track:'#3c7283',rail:'#66c5cc',trim:'#ffd58a',peg:'#fc956d',floor:'#203d53',sky:[.035,.065,.11]},
 funnel:{track:'#378aca',rail:'#79e9fe',trim:'#ffcb64',peg:'#df7cff',floor:'#153355',sky:[.036,.077,.15]},
 factory:{track:'#707d91',rail:'#edc36d',trim:'#ec9069',peg:'#fd8b5a',floor:'#253143',sky:[.06,.075,.11]},
 cosmic:{track:'#5157bd',rail:'#b86bff',trim:'#4fffe0',peg:'#ec7bfe',floor:'#1a2155',sky:[.06,.03,.14]},
@@ -44,6 +50,96 @@ constructor(canvas){this.canvas=canvas;const gl=canvas.getContext('webgl',{antia
 init(){const gl=this.gl,precision=(gl.getShaderPrecisionFormat(gl.FRAGMENT_SHADER,gl.HIGH_FLOAT)?.precision||0)>0?'highp':'mediump',vs=`precision ${precision} float;attribute vec3 aPos;attribute vec3 aNor;uniform mat4 uModel;uniform mat4 uVP;uniform vec3 uScale;uniform vec3 uCam;varying vec3 vN;varying vec3 vW;varying float vDist;void main(){vec4 w=uModel*vec4(aPos,1.0);vW=w.xyz;vN=normalize(mat3(uModel)*(aNor/uScale));vDist=distance(w.xyz,uCam);gl_Position=uVP*w;}`,fs=`precision ${precision} float;varying vec3 vN;varying vec3 vW;varying float vDist;uniform vec3 uColor;uniform vec3 uCam;uniform vec3 uFog;uniform float uGloss;uniform float uGlow;void main(){vec3 n=normalize(vN);vec3 light=normalize(vec3(-.43,.9,-.28));float d=max(dot(n,light),0.0);vec3 view=normalize(uCam-vW);vec3 h=normalize(light+view);float spec=pow(max(dot(n,h),0.0),uGloss>0.5?50.0:15.0)*(uGloss>0.5?.8:.23);vec3 c=uColor*(.31+.68*d)+vec3(spec)+uColor*uGlow*.4;float fog=clamp((vDist-57.0)/185.0,0.0,.78);c=mix(c,uFog,fog);gl_FragColor=vec4(c,1.0);}`;
 const compile=(type,source)=>{let s=gl.createShader(type);gl.shaderSource(s,source);gl.compileShader(s);if(!gl.getShaderParameter(s,gl.COMPILE_STATUS))throw Error(gl.getShaderInfoLog(s));return s};let prog=gl.createProgram();gl.attachShader(prog,compile(gl.VERTEX_SHADER,vs));gl.attachShader(prog,compile(gl.FRAGMENT_SHADER,fs));gl.linkProgram(prog);if(!gl.getProgramParameter(prog,gl.LINK_STATUS))throw Error(gl.getProgramInfoLog(prog));gl.useProgram(prog);this.program=prog;this.attr={pos:gl.getAttribLocation(prog,'aPos'),nor:gl.getAttribLocation(prog,'aNor')};this.uniform={model:gl.getUniformLocation(prog,'uModel'),vp:gl.getUniformLocation(prog,'uVP'),scale:gl.getUniformLocation(prog,'uScale'),cam:gl.getUniformLocation(prog,'uCam'),color:gl.getUniformLocation(prog,'uColor'),fog:gl.getUniformLocation(prog,'uFog'),gloss:gl.getUniformLocation(prog,'uGloss'),glow:gl.getUniformLocation(prog,'uGlow')};this.meshes={box:this.upload(boxMesh()),sphere:this.upload(sphereMesh()),cylinder:this.upload(cylinderMesh()),torus:this.upload(torusMesh())};gl.enable(gl.DEPTH_TEST);gl.enable(gl.CULL_FACE);gl.cullFace(gl.BACK);gl.clearDepth(1);}
 upload(data){let gl=this.gl;let b={count:data.idx.length};b.pos=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,b.pos);gl.bufferData(gl.ARRAY_BUFFER,data.pos,gl.STATIC_DRAW);b.nrm=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,b.nrm);gl.bufferData(gl.ARRAY_BUFFER,data.nrm,gl.STATIC_DRAW);b.idx=gl.createBuffer();gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,b.idx);gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,data.idx,gl.STATIC_DRAW);return b}
+
+
+ // Draw obstacle beams between their real collision endpoints. Curved tracks
+ // can twist the surrounding lane; the beam must use world-space endpoints,
+ // not a guessed local yaw that drifts away from the physical collider.
+ obstacleBar(world,x1,z1,x2,z2,radius,height,color,glow=0){
+  let a=world.toWorld(x1,z1),b=world.toWorld(x2,z2);
+  let dx=b[0]-a[0],dz=b[1]-a[1],length=Math.hypot(dx,dz);
+  let ang=Math.atan2(dx,dz);
+  let y=(world.floorY(z1)+world.floorY(z2))*.5+.18+height*.5;
+  this.draw('box',this.model((a[0]+b[0])*.5,y,(a[1]+b[1])*.5,radius*2,height,length,ang),color,[radius*2,height,length],0,glow);
+ }
+ // Sweep each rectangular strip along the SAME track centerline and elevation.
+ // Every adjacent section shares exactly the same endpoint vertices.
+ stripMesh(world,x0,h0,x1,h1,flip=false,zMin=0,zMax=world.length){
+  let positions=[],normals=[],indices=[],step=1.25;
+  let n=Math.max(1,Math.ceil((zMax-zMin)/step));
+  for(let i=0;i<n;i++){
+   let zA=zMin+(zMax-zMin)*i/n,zB=zMin+(zMax-zMin)*(i+1)/n;
+   const vertex=(x,h,z)=>{let v=world.toWorld(x,z);return [v[0],world.floorY(z)+h,v[1]]};
+   let verts=[vertex(x0,h0,zA),vertex(x1,h1,zA),vertex(x0,h0,zB),vertex(x1,h1,zB)];
+   let u=verts[2].map((v,j)=>v-verts[0][j]),v=verts[1].map((x,j)=>x-verts[0][j]);
+   let nn=norm(cross(u,v));if(flip)nn=nn.map(x=>-x);
+   let base=positions.length/3;
+   for(let vv of verts){positions.push(...vv);normals.push(...nn)}
+   if(!flip)indices.push(base,base+2,base+1,base+1,base+2,base+3);
+   else indices.push(base,base+1,base+2,base+1,base+3,base+2);
+  }
+  return meshData(positions,normals,indices);
+ }
+ // All geometry cached once per generated world, rather than issuing 300+
+ // independent floating rectangles every animation frame.
+ ensureTrack(world,theme){
+  if(this.trackWorld===world)return;
+  if(this.trackParts)for(let part of this.trackParts){
+   for(let key of ['pos','nrm','idx'])this.gl.deleteBuffer(part.mesh[key]);
+  }
+  this.trackWorld=world;this.trackParts=[];
+  const add=(color,x0,h0,x1,h1,flip=false,from=0,to=world.length)=>{
+   let mesh=this.upload(this.stripMesh(world,x0,h0,x1,h1,flip,from,to));
+   this.trackParts.push({mesh,color});
+  };
+  let w=world.width;
+  // One uninterrupted curved deck with underbody, side fascia and shoulders.
+  add(theme.track,-w,.13,w,.13);
+  add(theme.floor,-w-.32,-.52,w+.32,-.52,true);
+  add(theme.floor,-w-.32,-.52,-w-.32,.13);
+  add(theme.floor,w+.32,-.52,w+.32,.13,true);
+  for(let side of [-1,1]){
+   let x=side*w,outer=side*(w+.40);
+   // Solid shoulder: warm, contrasting boundary visible from high cameras.
+   if(side===1)add(theme.floor,w-.65,.145,w,.145);
+   else add(theme.floor,-w,.145,-w+.65,.145);
+   // Dual-facing continuous rail side faces and the top cap.
+   if(side===1){
+    add(theme.rail,x,.13,x,1.18);
+    add(theme.rail,outer,.13,outer,1.18,true);
+    add(theme.trim,x,1.18,outer,1.18);
+   }else{
+    add(theme.rail,x,.13,x,1.18,true);
+    add(theme.rail,outer,.13,outer,1.18);
+    add(theme.trim,outer,1.18,x,1.18);
+   }
+  }
+  // Two subtle, flush lane guides curve exactly with the racing surface.
+  for(let x of [-w*.39,w*.39])add(theme.floor,x-.045,.153,x+.045,.153);
+ // Each tunnel's walls and ceiling shoulders are also seamless swept geometry,
+ // instead of dozens of overlapping straight blocks.
+ for(let tunnel of world.obstacles.filter(o=>o.type==='tunnel')){
+  let r=tunnel.width,from=Math.max(0,tunnel.z-tunnel.len*.5),to=Math.min(world.length,tunnel.z+tunnel.len*.5);
+  add(theme.rail,-r,.15,-r,4.0,true,from,to);
+  add(theme.rail,r,.15,r,4.0,false,from,to);
+  add(theme.floor,-r,4.0,-r*.24,4.65,false,from,to);
+  add(theme.floor,r*.24,4.65,r,4.0,false,from,to);
+  add(theme.trim,-r*.3,4.65,-r*.24,4.65,false,from,to);
+  add(theme.trim,r*.24,4.65,r*.3,4.65,false,from,to);
+ }
+ }
+ drawTrackPart(part){
+  const gl=this.gl,u=this.uniform,a=this.attr,b=part.mesh;
+  gl.bindBuffer(gl.ARRAY_BUFFER,b.pos);gl.enableVertexAttribArray(a.pos);
+  gl.vertexAttribPointer(a.pos,3,gl.FLOAT,false,0,0);
+  gl.bindBuffer(gl.ARRAY_BUFFER,b.nrm);gl.enableVertexAttribArray(a.nor);
+  gl.vertexAttribPointer(a.nor,3,gl.FLOAT,false,0,0);
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,b.idx);
+  gl.uniformMatrix4fv(u.model,false,identity());
+  gl.uniform3fv(u.scale,[1,1,1]);gl.uniform3fv(u.color,rgb(part.color));
+  gl.uniform1f(u.gloss,0);gl.uniform1f(u.glow,0);
+  gl.drawElements(gl.TRIANGLES,b.count,gl.UNSIGNED_SHORT,0);
+ }
 resize(){let c=this.canvas,dpr=Math.min(devicePixelRatio||1,c.clientWidth<760?1.45:1.85),w=Math.max(1,Math.floor(c.clientWidth*dpr)),h=Math.max(1,Math.floor(c.clientHeight*dpr));if(c.width!==w||c.height!==h){c.width=w;c.height=h;this.gl.viewport(0,0,w,h)}}
 model(x,y,z,sx=1,sy=1,sz=1,rotY=0,rotX=0,rotZ=0){let m=translate(x,y,z);if(rotY)m=mm(m,ry(rotY));if(rotX)m=mm(m,rx(rotX));if(rotZ)m=mm(m,rz(rotZ));return mm(m,scale(sx,sy,sz))}
 draw(mesh,m,color,dim=[1,1,1],gloss=0,glow=0){const gl=this.gl,u=this.uniform,a=this.attr,b=this.meshes[mesh];gl.bindBuffer(gl.ARRAY_BUFFER,b.pos);gl.enableVertexAttribArray(a.pos);gl.vertexAttribPointer(a.pos,3,gl.FLOAT,false,0,0);gl.bindBuffer(gl.ARRAY_BUFFER,b.nrm);gl.enableVertexAttribArray(a.nor);gl.vertexAttribPointer(a.nor,3,gl.FLOAT,false,0,0);gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,b.idx);gl.uniformMatrix4fv(u.model,false,m);gl.uniform3fv(u.scale,dim);gl.uniform3fv(u.color,typeof color==='string'?rgb(color):color);gl.uniform1f(u.gloss,gloss);gl.uniform1f(u.glow,glow);gl.drawElements(gl.TRIANGLES,b.count,gl.UNSIGNED_SHORT,0)}
@@ -57,16 +153,18 @@ bindPointer(){let c=this.canvas;this.pinchDistance=0;c.addEventListener('pointer
 updateCamera(world,dt,home){let alive=world.marbles.filter(b=>!b.finished),ordered=[...alive].sort((a,b)=>b.z-a.z);let target=ordered[Math.floor(Math.max(0,ordered.length-1)*.46)]||world.marbles[0];if(this.focusId!==null){let f=world.marbles.find(b=>b.id===this.focusId);if(f&&!f.finished)target=f}let tz=home?Math.min(42,world.length*.38):target?clamp(target.z+10,4,world.length+5):32;this.viewZ=tz;let tx=target&&!home&&this.focusId!==null?target.x*.5:0;let wp=world.toWorld(tx,tz),lead=world.toWorld(tx,tz+8);let fy=world.floorY(tz);let cy=fy+1.3;let horizontal=(home?39:29)*this.zoom,vertical=(home?38:24)*this.zoom;let ang=this.cameraMode==='orbit'?this.orbitAngle:.58;let pitch=this.cameraMode==='orbit'?this.pitch:.76;let desired=[wp[0]+Math.sin(ang)*horizontal,cy+Math.sin(pitch)*vertical,wp[1]-Math.cos(ang)*horizontal];let aim=[lead[0],cy,lead[1]];let k=clamp(dt*(home?1.0:3),0,1);for(let i=0;i<3;i++){this.cam[i]+=(desired[i]-this.cam[i])*k;this.camTarget[i]+=(aim[i]-this.camTarget[i])*k}}
 project(pos){let m=this.lastVP,v=[pos[0],pos[1],pos[2],1],a=[];for(let r=0;r<4;r++)a[r]=m[r]*v[0]+m[4+r]*v[1]+m[8+r]*v[2]+m[12+r]*v[3];if(a[3]<=0)return null;let x=(a[0]/a[3]*.5+.5)*this.canvas.clientWidth,y=(1-(a[1]/a[3]*.5+.5))*this.canvas.clientHeight;return {x,y,visible:a[2]/a[3]<1}}
 render(world,delta,home=false){if(!world)return;this.drawPath=world;this.resize();this.updateCamera(world,delta,home);let gl=this.gl,t=themes[world.theme]||themes.pegboard;gl.clearColor(...t.sky,1);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);let proj=perspective(Math.PI/3,gl.canvas.width/gl.canvas.height,.3,490),v=lookAt(this.cam,this.camTarget);this.lastVP=mm(proj,v);gl.useProgram(this.program);gl.uniformMatrix4fv(this.uniform.vp,false,this.lastVP);gl.uniform3fv(this.uniform.cam,this.cam);gl.uniform3fv(this.uniform.fog,t.sky);let tilt=Math.atan(.24),L=world.length,w=world.width,seg=4.5,focusZ=this.viewZ??42,lo=home?0:Math.max(0,focusZ-78),hi=home?Math.min(L,155):Math.min(L,focusZ+94);
-// Downhill track, full 3D guardrails, lane markings and structural supports.
-for(let z=seg/2;z<L+seg/2;z+=seg){if(z<lo-6||z>hi+6)continue;let actualL=Math.min(seg,L-(z-seg/2));if(actualL<=0)break;let mid=z-seg/2+actualL/2,y=world.floorY(mid);this.box(0,y-.32,mid,w*2+.7,.65,actualL+.06,t.floor,0,tilt);this.box(0,y+.045,mid,w*2,.12,actualL,t.track,0,tilt);for(let side of [-1,1]){this.box(side*(w+.18),y+.72,mid,.36,1.35,actualL+.08,t.rail,0,tilt);this.box(side*(w+.08),y+1.35,mid,.4,.15,actualL+.08,t.trim,0,tilt,0,.12)}this.box(0,y+.117,mid,.11,.025,actualL,t.trim,0,tilt);if(Math.floor(mid/seg)%2===0)for(let sx of [-w*.5,w*.5])this.box(sx,y+.11,mid,.07,.03,actualL,t.rail,0,tilt)}
+// One continuous, swept road and edge system shared by every theme.
+// No overlapping straight boxes or yaw/pitch approximations of a curved deck.
+this.ensureTrack(world,t);
+for(let part of this.trackParts)this.drawTrackPart(part);
 for(let z=12;z<L;z+=26){if(z<lo-8||z>hi+8)continue;let y=world.floorY(z)-4.5;for(let x of [-w+.8,w-.8])this.box(x,y,z,.62,8.8,.7,'#566477');this.box(0,y-4.2,z,w*2+1,.5,.7,'#647589')}
 // Scenic props sit outside the collision corridor. Every object inside the track has matching contact physics or is a floor decal.
 for(let z=20;z<L;z+=27){
  if(z<lo-12||z>hi+12)continue;
  let y=world.floorY(z),m=Math.floor(z/27);
  if(world.theme==='pegboard'){
-  for(let side of [-1,1]){this.cylinder(side*(w+3.4),y+2.4,z,.42,5.3,'#9d6640');this.sphere(side*(w+3.4),y+5.5,z,1.05,m%2?'#ffd275':'#fa857f',1)}
-  this.box(0,y+5.2,z,w*2+1,.32,.42,'#ffe3a1',0,0,0,.12);
+  for(let side of [-1,1]){this.cylinder(side*(w+2.3),y+1.15,z,.37,2.55,'#8c6b55');this.sphere(side*(w+2.3),y+2.55,z,.54,m%2?'#ffd275':'#fa857f',1)}
+  // No overhead beam: previously looked like a floating obstacle without physics.
  }else if(world.theme==='funnel'){
   for(let side of [-1,1]){this.torus(side*(w+5),y+1.1,z,2.1,t.trim,.65);this.cylinder(side*(w+5),y-2,z,.26,5.8,t.rail)}
  }else if(world.theme==='factory'){
@@ -92,17 +190,17 @@ for(let o of world.obstacles){
  if(o.z<lo-16||o.z>hi+16)continue;
  let y=world.floorY(o.z)+.7;
  if(o.type==='peg'){
-  this.cylinder(o.x,y,o.z,o.r,.95,t.peg);
-  this.sphere(o.x,y+.6,o.z,o.r*.89,t.trim,.5);
+  this.cylinder(o.x,y-.06,o.z,o.r,.97,t.peg);
+  this.sphere(o.x,y+.4,o.z,o.r*.55,t.trim,.6);
  }else if(o.type==='spinner'){
   this.cylinder(o.x,y-.05,o.z,.77,1.25,t.trim);
-  let angle=world.time*o.speed+o.phase;
-  this.box(o.x,y+.42,o.z,o.size,.72,.6,t.peg,-angle,0,0,.15);
-  this.sphere(o.x,y+.45,o.z,.62,'#fff1bf',1);
+  let angle=world.time*o.speed+o.phase,dx=Math.cos(angle)*o.size*.5,dz=Math.sin(angle)*o.size*.5;
+  this.obstacleBar(world,o.x-dx,o.z-dz,o.x+dx,o.z+dz,.42,.85,t.peg,.18);
+  this.sphere(o.x,y+.45,o.z,.62,t.trim,1);
  }else if(o.type==='gate'){
   let left=o.gap-o.open*.5,right=o.gap+o.open*.5,a=left+w,b=w-right;
-  if(a>0)this.box(-w+a/2,y+.25,o.z,a,.75,.8,t.peg);
-  if(b>0)this.box(right+b/2,y+.25,o.z,b,.75,.8,t.peg);
+  if(a>0)this.obstacleBar(world,-w,o.z,left,o.z,.45,.85,t.peg);
+  if(b>0)this.obstacleBar(world,right,o.z,w,o.z,.45,.85,t.peg);
   this.box(o.gap,y+2.3,o.z,o.open+.8,.22,.48,t.trim,0,0,0,.35);
   for(let x of [left,right])this.box(x,y+1.1,o.z,.22,2,.5,t.trim);
  }else if(o.type==='vortex'){
@@ -113,18 +211,18 @@ for(let o of world.obstacles){
    if(Math.abs(Math.sin(mid))>.73)continue;
    let x1=o.x+o.r*Math.cos(a),z1=o.z+o.r*Math.sin(a);
    let x2=o.x+o.r*Math.cos(b),z2=o.z+o.r*Math.sin(b);
-   let angle=-Math.atan2(x2-x1,z2-z1),len=Math.hypot(x2-x1,z2-z1);
-   this.box((x1+x2)*.5,y+.01,(z1+z2)*.5,.56,.72,len,t.trim,angle,0,0,.35);
+   this.obstacleBar(world,x1,z1,x2,z2,.28,.76,t.trim,.22);
   }
   this.cylinder(o.x,y-.3,o.z,.6,.5,t.peg);
  }else if(o.type==='booster'){
   for(let j=0;j<3;j++){let zz=o.z-1.8+j*1.8;this.box(o.x,world.floorY(zz)+.155,zz,Math.min(6.5,o.size),.05,.9,t.trim,0,tilt,0,.8)}
  }else if(o.type==='split'){
-  for(let side of [-1,1])this.box(side*.9,y-.18,o.z+.4,2.7,.82,.6,t.peg,-side*.84);
+  this.obstacleBar(world,-1.8,o.z+1.4,0,o.z-.6,.32,.89,t.peg,.14);
+  this.obstacleBar(world,0,o.z-.6,1.8,o.z+1.4,.32,.89,t.peg,.14);
   this.cylinder(0,y,o.z-.6,.55,.7,t.trim);
  }else if(o.type==='bumper'){
   this.cylinder(o.x,y+.1,o.z,o.r,1.3,t.peg);
-  this.sphere(o.x,y+.85,o.z,o.r*.8,t.trim,1);
+  this.sphere(o.x,y+.85,o.z,o.r*.72,t.peg,1);
   this.torus(o.x,y-.45,o.z,o.r*.96,t.rail,.45);
  }else if(o.type==='spring'){
   this.cylinder(o.x,y+.12,o.z,o.r,1.1,t.peg);
@@ -151,8 +249,7 @@ for(let o of world.obstacles){
   for(let j=-3;j<=3;j++)this.box(j*2.5,world.floorY(o.z)+.27,o.z,.35,.04,1.5,t.rail,0,tilt,0,.45);
  }else if(o.type==='baffle'){
   let ax=o.side*(w+1.7),az=o.z-2.5,bx=o.side*8.15,bz=o.z+2.8;
-  let len=Math.hypot(bx-ax,bz-az),angle=-Math.atan2(bx-ax,bz-az);
-  this.box((ax+bx)*.5,y+1,(az+bz)*.5,.85,1.35,len,t.peg,angle,tilt,0,.18);
+  this.obstacleBar(world,ax,az,bx,bz,.43,1.2,t.peg,.12);
   this.sphere(bx,y+1.3,bz,.55,t.trim,1);this.cylinder(ax,y+1.1,az,.58,2.2,t.rail);
  }else if(o.type==='launcher'){
   this.box(o.x,y+.19,o.z,o.size,.2,3.9,'#f4a246',0,tilt,0,.35);
@@ -168,15 +265,8 @@ for(let o of world.obstacles){
  }else if(o.type==='tunnel'){
   let start=o.z-o.len*.5,end=o.z+o.len*.5,r=o.width;
   // Continuous side walls & roof bands follow the same curved path as the floor.
-  for(let zz=start+1.1;zz<end;zz+=2.2){
-   let h=world.floorY(zz),ll=Math.min(2.25,end-(zz-1.1));
-   for(let side of [-1,1]){
-    this.box(side*r,h+1.9,zz,.46,3.7,ll,t.rail,0,tilt,0,.05);
-    this.box(side*r*.73,h+4.7,zz,r*.52,.3,ll,t.floor,0,tilt);
-    this.box(side*r*.82,h+4.5,zz,.16,.12,ll,t.trim,0,tilt,0,.25);
-   }
-   this.box(0,h+.16,zz,r*2,.06,ll,t.track,0,tilt);
-  }
+  // Solid side walls and ceiling shoulders are drawn by ensureTrack(), using
+  // continuous mesh strips following the course curvature and ramp elevation.
   // Nine segments per arch create a rounded tunnel roof. The narrow central
   // skylight preserves visibility of marbles when the camera is overhead.
   for(let zz=start;zz<=end+.1;zz+=3.3){
@@ -240,7 +330,7 @@ function coinHTML(){return `<span class="coin" aria-hidden="true"></span>${save.
 function btn(text,act,klass=''){return `<button type="button" class="btn ${klass}" data-action="${act}">${text}</button>`}
 function commonHead(title,subtitle,back='home'){return `<div class="panel-head"><div><div class="eyebrow">MARBLE RUSH 3D</div><h2>${title}</h2><p>${subtitle}</p></div><button class="icon-btn" type="button" data-action="${back}" title="Close" aria-label="Close">×</button></div>`}
 function setScreen(s){state.screen=s;state.lastHUD=-1;renderUI()}
-function home(){return `<div class="hero-shell"><div class="topbar"><div class="logo"><div class="logo-mark"></div><div class="brand">MARBLE<br><span>RUSH 3D</span></div></div><div class="wallet" aria-label="Coin balance">${coinHTML()}</div></div><div class="hero-main"><div class="hero-copy"><div class="eyebrow">MARBLE RACES · TEAMS · PACHINKO</div><h1>ROLL.<br>RACE.<br><em>REPEAT.</em></h1><p>Choose one of six marbles, race through winding 3D tracks and real tunnel sections, or try Pachinko. No two courses are alike.</p><div class="hero-cta">${btn('▶ &nbsp; START RACING','setup','primary lg')}${btn('✦ &nbsp; MARBLE SHOP','shop','ghost lg')}</div></div></div><div class="bottom-nav"><button class="nav-tile" data-action="setup">🏁 &nbsp; NEW RACE<small>2–6 marbles</small></button><button class="nav-tile" data-action="shop">✦ &nbsp; UNLOCKS<small>Skins & tracks</small></button><button class="nav-tile" data-action="records">🏆 &nbsp; RECORDS<small>Your stats</small></button><button class="nav-tile" data-action="settings">⚙ &nbsp; SETTINGS<small>Sound & motion</small></button></div></div><div class="version-tag">OFFLINE 3D PROTOTYPE • v0.3</div>`}
+function home(){return `<div class="hero-shell"><div class="topbar"><div class="logo"><div class="logo-mark"></div><div class="brand">MARBLE<br><span>RUSH 3D</span></div></div><div class="wallet" aria-label="Coin balance">${coinHTML()}</div></div><div class="hero-main"><div class="hero-copy"><div class="eyebrow">MARBLE RACES · TEAMS · PACHINKO</div><h1>ROLL.<br>RACE.<br><em>REPEAT.</em></h1><p>Choose one of six marbles, race through winding 3D tracks and real tunnel sections, or try Pachinko. No two courses are alike.</p><div class="hero-cta">${btn('▶ &nbsp; START RACING','setup','primary lg')}${btn('✦ &nbsp; MARBLE SHOP','shop','ghost lg')}</div></div></div><div class="bottom-nav"><button class="nav-tile" data-action="setup">🏁 &nbsp; NEW RACE<small>2–6 marbles</small></button><button class="nav-tile" data-action="shop">✦ &nbsp; UNLOCKS<small>Skins & tracks</small></button><button class="nav-tile" data-action="records">🏆 &nbsp; RECORDS<small>Your stats</small></button><button class="nav-tile" data-action="settings">⚙ &nbsp; SETTINGS<small>Sound & motion</small></button></div></div><div class="version-tag">OFFLINE 3D PROTOTYPE • v0.4</div>`}
 function setup(){let themes=COURSES.filter(c=>!c.modeOnly).map(c=>{let locked=!save.unlockedCourses.includes(c.id);return `<button type="button" class="course-option ${state.course===c.id?'active':''} ${locked?'locked':''}" data-action="course" data-value="${c.id}"><span class="pict">${c.symbol}</span>${c.title}${locked?`<small>🔒 ${c.cost} coins</small>`:'<small>✓ Unlocked</small>'}</button>`}).join('');return `<div class="panel wide clickable">${commonHead('Set up your race','One device. All marbles. Unlimited bragging rights.')}<div class="formgrid"><div class="field"><div class="field-title">GAME MODE</div><div class="segment"><button data-action="mode" data-value="ffa" class="${state.mode==='ffa'?'active':''}">Free for All</button><button data-action="mode" data-value="teams" class="${state.mode==='teams'?'active':''}">Teams</button><button data-action="mode" data-value="pachinko" class="${state.mode==='pachinko'?'active':''}">Pachinko</button></div></div><div class="field"><div class="field-title">PLAYERS <small>2–6 competitors</small></div><div class="range-row"><input aria-label="Number of players" type="range" min="2" max="6" step="1" value="${state.count}" id="player-count"><div class="count" id="count-label">${state.count}</div></div></div>${state.mode==='teams'?`<div class="field"><div class="field-title">NUMBER OF TEAMS</div><div class="segment">${[2,3,4].map(n=>`<button data-action="teams" data-value="${n}" ${state.count<n?'disabled':''} class="${state.teams===n?'active':''}">${n} teams</button>`).join('')}</div></div>`:''}<div class="field"><div class="field-title">RACE LENGTH</div><div class="segment">${[['sprint','Sprint'],['standard','Standard'],['epic','Epic']].map(([v,n])=>`<button data-action="length" data-value="${v}" class="${state.length===v?'active':''}">${n}</button>`).join('')}</div></div><div class="field full-row"><div class="field-title">${state.mode==='pachinko'?'PACHINKO BOARD':'CHOOSE COURSE TYPE'} <small>New layout every round</small></div>${state.mode==='pachinko'?'<p class="hint">🎰 Pachinko Palace: drop through a fresh peg field and land in a reward slot. Highest points wins; crossing time breaks ties. No course unlock required.</p>':`<div class="course-options">${themes}</div>`}</div></div><div class="form-foot"><div class="hint"><strong>${state.count} marbles</strong> · ${state.mode==='teams'?state.teams+' teams':state.mode==='pachinko'?'Pachinko':'Free for All'} · ${state.length} course<br>All marble stats are equal. Cosmetics never affect racing.</div>${btn('NEXT: PICK MARBLES →','roster','primary lg')}</div></div>`}
 function roster(){let opts=SKINS.filter(s=>save.unlockedSkins.includes(s.id)).map(s=>`<option value="${s.id}">${s.title}</option>`);let rows=state.players.slice(0,state.count).map((p,i)=>{let clr=skinColor(p);return `<div class="player-card" data-player="${i}"><span class="player-number">${String(i+1).padStart(2,'0')}</span><span class="marble-swatch" style="background:${clr}"></span><div class="player-controls"><input maxlength="15" aria-label="Player ${i+1} name" data-player-name="${i}" value="${esc(p.name)}" placeholder="Player ${i+1}"><div style="display:flex;gap:6px"><select data-skin="${i}" aria-label="Player ${i+1} marble finish">${opts.map(s=>s.replace(`value="${p.skin}"`,`value="${p.skin}" selected`)).join('')}</select>${state.mode==='teams'?`<select data-team="${i}" aria-label="Player ${i+1} team">${Array.from({length:state.teams},(_,j)=>`<option value="${j}" ${p.team%state.teams===j?'selected':''}>Team ${j+1}</option>`).join('')}</select>`:''}</div></div></div>`}).join('');return `<div class="panel wide clickable">${commonHead('Choose your marbles','Pass the device around. Everyone chooses a name and marble finish.','setup')}<div class="roster">${rows}</div><div class="form-foot"><span class="hint">Unlocked finishes can be used by any player.<br>Everyone races with identical physics.</span>${btn('PREVIEW COURSE →','preview','primary lg')}</div></div>`}
 function preview(){let c=COURSES.find(x=>x.id===state.world.theme);return `<div class="panel narrow clickable" style="margin-left:auto;margin-right:max(14px,4vw)">${commonHead('Course ready','The 3D track behind this window was generated for your race.','roster')}<div class="field" style="margin-bottom:12px"><div class="eyebrow">${esc(c.title.toUpperCase())}</div><div style="font-size:31px;font-weight:950;margin:5px 0">${c.symbol} &nbsp;${esc(c.title)}</div><div class="hint">${state.world.obstacles.length} obstacle modules · Seed #${state.world.seed.toString(36).toUpperCase()} · ${state.count} contenders</div></div><p class="hint">${state.mode==='pachinko'?'Highest scoring slot wins. The center is worth 1,000 points; ties go to the quicker marble.':'Race cameras follow the action automatically.'} During the race, drag to orbit, scroll or pinch to zoom, or tap a racer in the leaderboard.</p><div class="form-foot">${btn('↻ REGENERATE','regen','ghost')}${btn('▶ &nbsp; LAUNCH RACE','launch','primary lg')}</div></div>`}
@@ -315,7 +405,7 @@ return {seed,theme,mode:'race',length,obstacles,marbles,width:10,elapsed:0,time:
  floorY:z=>{let y=12-.24*z;for(let r of ramps){let d=(z-r.z)/5.4;if(Math.abs(d)<2)y+=r.rise*Math.exp(-d*d)}return y;},
  rampSlope:z=>{let v=0;for(let r of ramps){let d=(z-r.z)/5.4;if(Math.abs(d)<2)v+=-2*r.rise*d/5.4*Math.exp(-d*d)}return v;},
  pathX:center,pathSlope:slope,pathCurvature:curvature,
- heading:z=>-Math.atan(slope(z)),
+ heading:z=>Math.atan(slope(z)),
  toWorld:(x,z)=>{let a=Math.atan(slope(z));return [center(z)+x*Math.cos(a),z-x*Math.sin(a)]}};
 }
 function circleCollision(b,x,z,r,impulse=1){let dx=b.x-x,dz=b.z-z,d2=dx*dx+dz*dz,min=b.r+r;if(d2>=min*min)return false;let d=Math.sqrt(Math.max(d2,.0001)),nx=dx/d,nz=dz/d,overlap=min-d;b.x+=nx*overlap*1.03;b.z+=nz*overlap*1.03;let vn=b.vx*nx+b.vz*nz;if(vn<0){b.hitCount=(b.hitCount||0)+1;b.vx-=(1.4*impulse)*vn*nx;b.vz-=(1.4*impulse)*vn*nz;b.bounce=Math.min(.7,b.bounce+.12)}return true}
