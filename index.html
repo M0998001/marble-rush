@@ -5,6 +5,12 @@
 @media(max-width:420px){.nav-tile small{display:none}.nav-tile{font-size:12px;padding:12px 6px}.hero-copy p{font-size:13px}.hero-copy h1{font-size:53px}.course-options{grid-template-columns:repeat(2,1fr)}.course-option{min-height:73px}.course-option .pict{display:inline-block;margin:0 6px 0 0}.shop-grid{gap:8px}.shop-card{padding:9px}.leaderboard{width:58vw}.leader-row{font-size:10px}.leader-row .nm{width:43px}.hud-controls button{min-width:75px;font-size:11px}.panel-head h2{font-size:25px}}
 @media(orientation:landscape) and (max-height:540px){.hero-main{padding:0}.hero-copy h1{font-size:52px}.hero-copy p{font-size:13px;max-width:390px}.bottom-nav{padding-bottom:2px}.topbar .logo .brand{font-size:21px}.panel{max-height:95dvh}.panel-head{margin-bottom:10px}.hud{padding:8px}.hud-top .hud-pill{padding:7px}.hud-bottom .leaderboard{max-height:54dvh;overflow-y:auto}.race-toast{top:35%}}
 
+@media(max-width:730px){
+ .hud-pill{padding:7px 9px}.hud-title{font-size:10px}.hud-sub{font-size:9px}.timer{font-size:21px}
+ .touch-help{display:none}.leaderboard{padding:8px;width:min(53vw,210px)}
+ .lead-head{font-size:9px;letter-spacing:.4px}.leader-row{padding:3px 2px;font-size:10px}
+ .lead-footer{font-size:9px}.hud-controls{gap:5px}.hud-controls button{padding:8px 9px;min-width:90px;font-size:10px}
+}
 </style></head><body><canvas id="scene" aria-label="3D marble racing arena"></canvas><div id="overlay"><div id="hud" class="hud hidden"></div></div><main id="app"></main><script>
 /* Marble Rush 3D — original, dependency-free WebGL 1 renderer */
 (function(){
@@ -28,7 +34,7 @@ function sphereMesh(lat=13,lon=20){let p=[],n=[],idx=[];for(let i=0;i<=lat;i++){
 function cylinderMesh(sides=18){let p=[],n=[],idx=[];for(let i=0;i<=sides;i++){let a=TAU*i/sides,x=Math.cos(a)*.5,z=Math.sin(a)*.5;for(let y of [-.5,.5]){p.push(x,y,z);n.push(x*2,0,z*2)}}for(let i=0;i<sides;i++){let a=2*i,b=a+2;idx.push(a,a+1,b,b,a+1,b+1)}let b=p.length/3;p.push(0,.5,0);n.push(0,1,0);for(let i=0;i<=sides;i++){let a=TAU*i/sides;p.push(.5*Math.cos(a),.5,.5*Math.sin(a));n.push(0,1,0)}for(let i=0;i<sides;i++)idx.push(b,b+2+i,b+1+i);b=p.length/3;p.push(0,-.5,0);n.push(0,-1,0);for(let i=0;i<=sides;i++){let a=TAU*i/sides;p.push(.5*Math.cos(a),-.5,.5*Math.sin(a));n.push(0,-1,0)}for(let i=0;i<sides;i++)idx.push(b,b+1+i,b+2+i);return meshData(p,n,idx)}
 function torusMesh(around=32,tube=10){let p=[],n=[],idx=[];for(let i=0;i<=around;i++)for(let j=0;j<=tube;j++){let a=TAU*i/around,b=TAU*j/tube,rad=1+.12*Math.cos(b);p.push(rad*Math.cos(a),.12*Math.sin(b),rad*Math.sin(a));n.push(Math.cos(a)*Math.cos(b),Math.sin(b),Math.sin(a)*Math.cos(b))}for(let i=0;i<around;i++)for(let j=0;j<tube;j++){let a=i*(tube+1)+j,b=a+tube+1;idx.push(a,a+1,b,b,a+1,b+1)}return meshData(p,n,idx)}
 const themes={
-pegboard:{track:'#a4714d',rail:'#f3c58e',trim:'#fff1af',peg:'#f18556',floor:'#563d36',sky:[.09,.095,.16]},
+pegboard:{track:'#3c7283',rail:'#66c5cc',trim:'#ffd58a',peg:'#fc956d',floor:'#203d53',sky:[.035,.065,.11]},
 funnel:{track:'#378aca',rail:'#79e9fe',trim:'#ffcb64',peg:'#df7cff',floor:'#153355',sky:[.036,.077,.15]},
 factory:{track:'#707d91',rail:'#edc36d',trim:'#ec9069',peg:'#fd8b5a',floor:'#253143',sky:[.06,.075,.11]},
 cosmic:{track:'#5157bd',rail:'#b86bff',trim:'#4fffe0',peg:'#ec7bfe',floor:'#1a2155',sky:[.06,.03,.14]},
@@ -110,6 +116,17 @@ upload(data){let gl=this.gl;let b={count:data.idx.length};b.pos=gl.createBuffer(
   }
   // Two subtle, flush lane guides curve exactly with the racing surface.
   for(let x of [-w*.39,w*.39])add(theme.floor,x-.045,.153,x+.045,.153);
+ // Each tunnel's walls and ceiling shoulders are also seamless swept geometry,
+ // instead of dozens of overlapping straight blocks.
+ for(let tunnel of world.obstacles.filter(o=>o.type==='tunnel')){
+  let r=tunnel.width,from=Math.max(0,tunnel.z-tunnel.len*.5),to=Math.min(world.length,tunnel.z+tunnel.len*.5);
+  add(theme.rail,-r,.15,-r,4.0,true,from,to);
+  add(theme.rail,r,.15,r,4.0,false,from,to);
+  add(theme.floor,-r,4.0,-r*.24,4.65,false,from,to);
+  add(theme.floor,r*.24,4.65,r,4.0,false,from,to);
+  add(theme.trim,-r*.3,4.65,-r*.24,4.65,false,from,to);
+  add(theme.trim,r*.24,4.65,r*.3,4.65,false,from,to);
+ }
  }
  drawTrackPart(part){
   const gl=this.gl,u=this.uniform,a=this.attr,b=part.mesh;
@@ -248,15 +265,8 @@ for(let o of world.obstacles){
  }else if(o.type==='tunnel'){
   let start=o.z-o.len*.5,end=o.z+o.len*.5,r=o.width;
   // Continuous side walls & roof bands follow the same curved path as the floor.
-  for(let zz=start+1.1;zz<end;zz+=2.2){
-   let h=world.floorY(zz),ll=Math.min(2.25,end-(zz-1.1));
-   for(let side of [-1,1]){
-    this.box(side*r,h+1.9,zz,.46,3.7,ll,t.rail,0,tilt,0,.05);
-    this.box(side*r*.73,h+4.7,zz,r*.52,.3,ll,t.floor,0,tilt);
-    this.box(side*r*.82,h+4.5,zz,.16,.12,ll,t.trim,0,tilt,0,.25);
-   }
-   this.box(0,h+.16,zz,r*2,.06,ll,t.track,0,tilt);
-  }
+  // Solid side walls and ceiling shoulders are drawn by ensureTrack(), using
+  // continuous mesh strips following the course curvature and ramp elevation.
   // Nine segments per arch create a rounded tunnel roof. The narrow central
   // skylight preserves visibility of marbles when the camera is overhead.
   for(let zz=start;zz<=end+.1;zz+=3.3){
