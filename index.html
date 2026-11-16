@@ -224,13 +224,15 @@ for(let zz=37;zz<length-14;zz+=44){
  for(let x of xs1)obstacles.push({type:'peg',x,z:zz,r:.93});
  for(let x of xs2)obstacles.push({type:'peg',x,z:zz+6,r:.93});
 }
-for(let zz=24,i=0;zz<length-16;zz+=17.5,i++){
- let nearSlalom=obstacles.some(o=>o.type==='peg'&&o.r===.93&&Math.abs(o.z-zz)<9);
- if(inTunnel(zz)||nearSlalom)continue;
- // Side obstacles only extend 2.7 units into the lane, keeping passing room.
+for(let zz=24,i=0;zz<length-16;zz+=12.5,i++){
+ if(inTunnel(zz))continue;
  let side=i%2?1:-1;
- obstacles.push({type:'baffle',side,x:side*8,z:zz});
- obstacles.push({type:'bumper',x:-side*8.1,z:zz+4,r:1.06});
+ // Keep frequent side-mounted bumpers away from other solid objects.
+ if(!obstacles.some(o=>Math.abs(o.z-zz)<3.6&&Math.abs((o.x||0)-side*8.4)<3.1))
+   obstacles.push({type:'bumper',x:side*8.4,z:zz,r:1.07});
+ // Baffles only occupy clear chapters, never overlapping a peg row or gate.
+ if(i%2===0&&!obstacles.some(o=>o.type!=='ramp'&&o.type!=='booster'&&Math.abs(o.z-zz)<7.1))
+   obstacles.push({type:'baffle',side,x:side*8,z:zz});
 }
 if(theme!=='pegboard')for(let zz=62;zz<length-14;zz+=83){
  if(inTunnel(zz))continue;
@@ -264,7 +266,7 @@ else if(o.type==='ramp'){if(Math.abs(b.z-o.z)<4&&Math.abs(b.x)<halfW)b.vz+=dt*1.
 if(b.bounce>previousBounce+.08)world.hitEvents=(world.hitEvents||0)+1;b.vz=clamp(b.vz,-5,max);b.vx=clamp(b.vx,-8,8);if(b.z<.25){b.z=.25;b.vz=Math.abs(b.vz)*.4}if(b.vz<.7&&Math.abs(b.z-b.prevZ)<.01)b.stuck+=dt;else b.stuck=Math.max(0,b.stuck-dt*.7);if(b.stuck>7){b.vz=Math.max(b.vz,4.5);b.vx+=(world.seed%2?1:-1)*1.3;b.stuck=0}
 // Stuck marbles recover through gradual steering and acceleration, not position teleports.
 if(b.z>b.progressBest+1.0){b.progressBest=b.z;b.progressTimer=0}else b.progressTimer+=dt;
-if(b.progressTimer>3.5){let gate=world.obstacles.find(o=>o.type==='gate'&&o.z>b.z-2&&o.z<b.z+12),target=gate?gate.gap:((b.id+world.seed)%2?7:-7);b.vx+=clamp(target-b.x,-8,8)*dt*7;b.vz=Math.max(b.vz,6)}
+if(b.progressTimer>3.5){let gate=world.obstacles.find(o=>o.type==='gate'&&o.z>b.z-2&&o.z<b.z+12),target=gate?gate.gap:Math.abs(b.x)>halfW*.54?0:((b.id+world.seed)%2?5:-5);b.vx+=clamp(target-b.x,-8,8)*dt*7;b.vz=Math.max(b.vz,6)}
 if(b.z>=finish){let frac=oldVz>0?clamp((finish-b.prevZ)/Math.max(.0001,b.z-b.prevZ),0,1):1;b.z=finish;b.time=Math.max(.01,world.time-dt+frac*dt);b.finished=true;if(world.mode==='pachinko'){let slot=clamp(Math.floor((b.x+halfW)/(halfW*2)*PACHINKO_SLOTS.length),0,PACHINKO_SLOTS.length-1);b.score=PACHINKO_SLOTS[slot];b.slot=slot}thisFrameFinishers.push(b)}}
 thisFrameFinishers.sort((a,b)=>a.time-b.time);for(let b of thisFrameFinishers){b.place=world.finishOrder.length+1;world.finishOrder.push(b.id)}
 // Pairwise physically responsive 3D marble collisions, same size and mass for all cosmetics.
