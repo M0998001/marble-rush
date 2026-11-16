@@ -402,7 +402,44 @@ function shop(){let list=state.shopTab==='marbles'?SKINS:COURSES;let cards=list.
 function records(){let s=save.stats;return `<div class="panel narrow clickable">${commonHead('Hall of Fame','Your shared-device marble racing record.')}<div class="stats-grid"><div class="stat"><strong>${s.races}</strong><small>Races run</small></div><div class="stat"><strong>${s.wins}</strong><small>Solo wins</small></div><div class="stat"><strong>${s.bestTime===null?'—':formatTime(s.bestTime)}</strong><small>Fastest winner</small></div></div><div class="field" style="margin-top:15px"><div class="field-title">PROGRESSION</div><p class="hint">${save.unlockedSkins.length} / ${SKINS.length} marble looks discovered<br>${save.unlockedCourses.length} / ${COURSES.length} course types unlocked<br>${save.coins} coins ready to spend</p></div><div class="form-foot">${btn('HOME','home','ghost')}${btn('START A RACE','setup','primary')}</div></div>`}
 function settings(){return `<div class="panel narrow clickable">${commonHead('Settings','Tailor the race to the room and your device.')}<div class="field"><label class="check-toggle"><input id="sound-setting" type="checkbox" ${save.sound?'checked':''}> Sound effects</label></div><div class="field" style="margin-top:12px"><label class="check-toggle"><input id="motion-setting" type="checkbox" ${save.reducedMotion?'checked':''}> Reduced camera motion</label><p class="notice">Keeps camera movement gentle while preserving the same racing physics.</p></div><p class="notice">Progress is saved in your browser on this device. Clearing browser data may reset your coins, courses, and cosmetics.</p><div class="form-foot">${btn('BACK HOME','home','ghost')}</div></div>`}
 function formatTime(n){if(n===null||n===undefined)return 'DNF';return Math.floor(n/60).toString().padStart(2,'0')+':'+(n%60).toFixed(2).padStart(5,'0')}
-function skinColor(p){let s=SKINS.find(s=>s.id===p.skin);return s&&s.color?s.color:p.color}
+
+function normalizeColor(value,fallback='#4fb8ff'){return typeof value==='string'&&/^#[0-9a-f]{6}$/i.test(value)?value.toLowerCase():fallback}
+function getSkin(id){return SKINS.find(x=>x.id===id)||SKINS[0]}
+function skinColor(p){return normalizeColor(p.color,'#4fb8ff')}
+function skinPattern(p){return getSkin(p.skin).pattern}
+function skinAccent(p){return getSkin(p.skin).accent}
+function skinPreviewCSS(skinId,color){
+ const c=normalizeColor(color),a=getSkin(skinId).accent;
+ const base='radial-gradient(circle at 28% 21%,#ffffff9a,transparent 23%),radial-gradient(circle at 38% 28%,'+c+',#142f47 120%)';
+ switch(getSkin(skinId).pattern){
+  case 0:return base;
+  case 1:return 'repeating-linear-gradient(75deg,transparent 0 18%,'+a+' 19% 30%,transparent 31% 48%),'+base;
+  case 2:return 'repeating-linear-gradient(90deg,transparent 0 19%,'+a+' 20% 23%,transparent 24% 33%),repeating-linear-gradient(0deg,transparent 0 19%,'+a+' 20% 22%,transparent 23% 32%),'+base;
+  case 3:return 'repeating-conic-gradient(from 32deg,transparent 0deg 33deg,'+a+' 34deg 48deg,transparent 49deg 65deg),'+base;
+  case 4:return 'radial-gradient(ellipse at 26% 72%,'+a+' 0 16%,transparent 49%),conic-gradient(from 30deg,'+c+','+a+','+c+',#94d6ff,'+c+')';
+  case 5:return 'repeating-linear-gradient(120deg,transparent 0 16%,'+a+' 17% 20%,transparent 21% 34%),radial-gradient(circle,'+c+',#142944)';
+  case 6:return 'radial-gradient(circle at 75% 30%,#ffffff 0 2%,transparent 3%),radial-gradient(circle at 28% 50%,'+a+' 0 5%,transparent 8%),repeating-conic-gradient(from 15deg,'+c+' 0deg 31deg,#28204e 32deg 50deg,'+a+' 51deg 57deg)';
+  case 7:return 'repeating-conic-gradient(from 50deg,'+c+' 0deg 20deg,'+a+' 21deg 36deg,#8c202c 37deg 48deg)';
+  case 8:return 'conic-gradient('+c+' 25%,'+a+' 0 50%,'+c+' 0 75%,'+a+' 0) 0 0/38% 38%';
+  case 9:return 'repeating-linear-gradient(112deg,'+c+' 0 13%,'+a+' 15% 23%,'+c+' 28% 43%)';
+  case 10:return 'repeating-conic-gradient(from 15deg,'+c+' 0deg 25deg,'+a+' 26deg 43deg,'+c+' 44deg 59deg)';
+  case 11:return 'repeating-radial-gradient(circle at 40% -10%,'+a+' 0 3px,'+c+' 4px 13px,'+a+' 14px 15px)';
+  case 12:return 'repeating-linear-gradient(135deg,'+c+' 0 17%,'+a+' 18% 20%,'+c+' 21% 31%),'+base;
+  default:return 'conic-gradient('+a+' 25%,'+c+' 0 50%,#28364e 0 75%,'+c+' 0) 0 0/28% 28%';
+ }
+}
+function marbleSwatch(player,extraClass=''){
+ return '<span class="marble-swatch '+extraClass+'" style="background:'+skinPreviewCSS(player.skin,player.color)+'" aria-hidden="true"></span>';
+}
+function savePlayerLooks(){save.playerLooks=state.players.map(p=>({skin:p.skin,color:skinColor(p)}));persist()}
+function refreshPlayerCard(index){
+ const card=app.querySelector('[data-player="'+index+'"]');if(!card)return;
+ const p=state.players[index],sw=card.querySelector('.marble-swatch');
+ if(sw)sw.style.background=skinPreviewCSS(p.skin,p.color);
+ const color=card.querySelector('[data-player-color]');
+ if(color&&color.value.toLowerCase()!==skinColor(p))color.value=skinColor(p);
+ card.querySelectorAll('[data-action="color-preset"]').forEach(b=>b.classList.toggle('picked',b.dataset.value.toLowerCase()===skinColor(p)));
+}
 function leaderboardRows(w){
  let order=[...w.marbles].sort((a,b)=>w.mode==='pachinko'&&w.done?(a.place??99)-(b.place??99):Number(b.finished)-Number(a.finished)||((a.finished&&b.finished)?(w.mode==='pachinko'?b.score-a.score:a.time-b.time):b.z-a.z));
  return order.slice(0,6).map((b,i)=>`<div class="leader-row ${state.selectedFollow===b.id?'selected':''}" data-follow="${b.id}" title="Follow ${esc(b.name)}"><span class="place">${i+1}</span><span class="small-dot" style="background:${b.color}"></span><span class="nm">${esc(b.name)}</span><div class="rail"><div class="fill" style="width:${Math.round(clamp(b.z/w.length,0,1)*100)}%;background:${b.color}"></div></div>${w.mode==='pachinko'&&b.finished?'<strong style="color:#ffe18b;font-size:10px">'+b.score+'</strong>':''}</div>`).join('')
