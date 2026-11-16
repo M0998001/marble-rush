@@ -4,9 +4,17 @@ A shared-screen, arcade-style **3D marble racing game** built for mobile Safari,
 
 ### ▶️ Play
 
-**[Play Marble Rush 3D](https://m0998001.github.io/marble-rush/?v=5)**
+**[Play Marble Rush 3D](https://m0998001.github.io/marble-rush/?v=6)**
 
 No account or installation required. Each visitor plays a local session on their own device; the link does not connect friends into one online race.
+
+## v0.5 — Home Screen icons and Pachinko as a stage
+
+- **iOS Home Screen icon:** Added `apple-touch-icon.png` (180×180), 192×192 and 512×512 web app icons, and a web app manifest for standalone installation.
+- **Install on iPhone or iPad:** Open the public link in **Safari** → Share → **Add to Home Screen** → **Add**. The icon and label **Marble Rush** appear on the Home Screen. If you previously installed the game, remove the older shortcut and add it again to update the icon.
+- **Pachinko Palace is now a free stage, not a separate game mode.** Select Free for All or Teams, then choose Pachinko Palace under Course Type. Existing saved coin balances and unlocked courses remain intact.
+- In Free for All Pachinko, the highest slot points win (time breaks ties). In Teams Pachinko, the highest **average slot score** wins. Other stages continue to use racing placement.
+- Two game modes remain: Free for All and Teams. There are now **10 course types**, including Pachinko Palace.
 
 ## v0.4 — Visual track geometry repair
 
@@ -35,13 +43,12 @@ A phone screenshot revealed a major presentation defect in v0.3: the visual road
 - **More complete courses:** A shallow start ridge gives each marble early contact, while hand-spaced slalom sections prevent consistently straight, obstacle-free lanes.
 - **Mobile optimization:** Reduced WebGL pixel ratio and camera-based object culling for more practical phone performance.
 
-Previously added in v0.2: **2–6-player limit**, **Pachinko mode**, increased course diversity, gradual stuck recovery instead of teleporting marbles, and additional materials/scenery.
+Previously added in v0.2: **2–6-player limit**, **Pachinko board**, increased course diversity, gradual stuck recovery instead of teleporting marbles, and additional materials/scenery.
 
 ## Modes
 
 - **Free for All** — First marble to the finish wins.
 - **Teams** — Choose 2–4 teams; team average finishing points decide the winner.
-- **Pachinko Palace** — Marbles fall through a dense peg board into seven point slots (100 / 250 / 500 / 1000 / 500 / 250 / 100). Highest score wins, with finishing time as the tie-breaker.
 
 ## Available racing themes
 
@@ -56,8 +63,9 @@ Previously added in v0.2: **2–6-player limit**, **Pachinko mode**, increased c
 | Glacier Glide | 2,500 | Sliding patches, crystalline scenery and ice tunnels |
 | Magma Mayhem | 3,200 | Volcanic jump pads, spring bumpers and slaloms |
 | Coral Cove | 4,000 | Reef-themed obstacles, currents and underwater tunnels |
+| Pachinko Palace | Free | 7 scoring bins, dense pegs, high-score win conditions |
 
-Pachinko is a free **game mode**, separate from the nine racing courses. Existing players automatically get Tunnel Twister unlocked, without losing coins or previously unlocked content.
+Pachinko Palace is a free **stage** in the course picker, available under Free for All and Teams. Existing players automatically receive this stage and Tunnel Twister without spending coins.
 
 ## Controls
 
