@@ -136,7 +136,10 @@ for(let o of world.obstacles){
 // Side barriers, active launch platforms, raised ramps, and continuous 3D tunnels.
 for(let o of world.obstacles){
  let y=world.floorY(o.z);
- if(o.type==='baffle'){
+ if(o.type==='rumble'){
+  this.box(0,world.floorY(o.z)+.16,o.z,o.size,.13,1.75,t.trim,0,tilt,0,.32);
+  for(let j=-3;j<=3;j++)this.box(j*2.5,world.floorY(o.z)+.27,o.z,.35,.04,1.5,t.rail,0,tilt,0,.45);
+ }else if(o.type==='baffle'){
   let ax=o.side*(w+1.7),az=o.z-2.5,bx=o.side*8.15,bz=o.z+2.8;
   let len=Math.hypot(bx-ax,bz-az),angle=-Math.atan2(bx-ax,bz-az);
   this.box((ax+bx)*.5,y+1,(az+bz)*.5,.85,1.35,len,t.peg,angle,tilt,0,.18);
@@ -287,7 +290,10 @@ if(theme!=='pegboard')for(let zz=62;zz<length-14;zz+=83){
  obstacles.push({type:'ramp',x:0,z:zz,rise:1.65});
  if(['volcano','factory','cosmic','tunnel'].includes(theme))obstacles.push({type:'launcher',x:(rand()-.5)*4,z:zz+11,size:6});
 }
-let marbles=(players||Array.from({length:6},(_,i)=>initialPlayer(i))).slice(0,6).map((p,i,all)=>{let span=Math.min(13.5,3.05*(all.length-1));let startX=all.length===1?0:(i/(all.length-1)-.5)*span;return {id:p.id,name:p.name.trim()||`Player ${i+1}`,team:p.team,x:startX,z:1.3,y:0,vx:(rand()-.5)*.22,vz:0,r:.45,bounce:0,finished:false,place:null,time:null,score:0,hitCount:0,air:0,airDuration:0,launchCooldown:0,color:skinColor(p),skin:p.skin,stuck:0,prevZ:1.3,progressBest:1.3,progressTimer:0}});for(let i=marbles.length-1;i>0;i--){let j=Math.floor(rand()*(i+1));[marbles[i].x,marbles[j].x]=[marbles[j].x,marbles[i].x]}
+// A full-width rumble ridge just after the launch ensures all marbles touch
+// an obstacle before entering the randomized maze.
+obstacles.push({type:'rumble',x:0,z:12,size:19.2});
+let marbles=(players||Array.from({length:6},(_,i)=>initialPlayer(i))).slice(0,6).map((p,i,all)=>{let span=Math.min(13.5,3.05*(all.length-1));let startX=all.length===1?0:(i/(all.length-1)-.5)*span;return {id:p.id,name:p.name.trim()||`Player ${i+1}`,team:p.team,x:startX,z:1.3,y:0,vx:(rand()-.5)*.22,vz:0,r:.45,bounce:0,finished:false,place:null,time:null,score:0,hitCount:0,air:0,airDuration:0,launchCooldown:0,rumbleHit:false,color:skinColor(p),skin:p.skin,stuck:0,prevZ:1.3,progressBest:1.3,progressTimer:0}});for(let i=marbles.length-1;i>0;i--){let j=Math.floor(rand()*(i+1));[marbles[i].x,marbles[j].x]=[marbles[j].x,marbles[i].x]}
 // Each track is shaped around a continuous, tangent-aligned S-curve. Coordinates of all
 // obstacles and collisions remain in the course's local lanes.
 let phase=rand()*Math.PI*2,amplitude=theme==='funnel'?14:theme==='factory'?10:12;
@@ -310,7 +316,8 @@ for(let o of world.obstacles){if(Math.abs(o.z-b.z)>11)continue;if(b.air>.22&&o.t
 else if(o.type==='baffle'){segmentCollision(b,o.side*(halfW+1.7),o.z-2.5,o.side*8.15,o.z+2.8,.43,.85)}
 else if(o.type==='tunnel'){if(Math.abs(b.z-o.z)<o.len*.5+.2){let bound=o.width-b.r;if(b.x>bound){b.x=bound;b.vx=-Math.abs(b.vx)*.73;b.hitCount++}else if(b.x<-bound){b.x=-bound;b.vx=Math.abs(b.vx)*.73;b.hitCount++}if(b.air>.2)b.air=.2}}
 else if(o.type==='launcher'){if(Math.abs(b.x-o.x)<o.size*.5&&Math.abs(b.z-o.z)<2.1&&b.launchCooldown<=0){b.vz=Math.max(b.vz,12.5);b.vx+=(b.x>o.x?1:-1)*1.15;b.air=.83;b.airDuration=.83;b.launchCooldown=2;b.hitCount++;world.hitEvents=(world.hitEvents||0)+1}}
-else if(o.type==='ramp'){if(Math.abs(b.z-o.z)<4&&Math.abs(b.x)<halfW)b.vz+=dt*1.4}}
+else if(o.type==='ramp'){if(Math.abs(b.z-o.z)<4&&Math.abs(b.x)<halfW)b.vz+=dt*1.4}
+else if(o.type==='rumble'){if(!b.rumbleHit&&Math.abs(b.z-o.z)<.7){b.rumbleHit=true;b.hitCount++;b.bounce=Math.max(b.bounce,.36);world.hitEvents=(world.hitEvents||0)+1}}}
 if(b.bounce>previousBounce+.08)world.hitEvents=(world.hitEvents||0)+1;b.vz=clamp(b.vz,-5,max);b.vx=clamp(b.vx,-8,8);if(b.z<.25){b.z=.25;b.vz=Math.abs(b.vz)*.4}if(b.vz<.7&&Math.abs(b.z-b.prevZ)<.01)b.stuck+=dt;else b.stuck=Math.max(0,b.stuck-dt*.7);if(b.stuck>7){b.vz=Math.max(b.vz,4.5);b.vx+=(world.seed%2?1:-1)*1.3;b.stuck=0}
 // Stuck marbles recover through gradual steering and acceleration, not position teleports.
 if(b.z>b.progressBest+1.0){b.progressBest=b.z;b.progressTimer=0}else b.progressTimer+=dt;
