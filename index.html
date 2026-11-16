@@ -27,7 +27,17 @@ function boxMesh(){const p=[],n=[],idx=[];const faces=[{n:[0,0,1],v:[[-.5,-.5,.5
 function sphereMesh(lat=13,lon=20){let p=[],n=[],idx=[];for(let i=0;i<=lat;i++){let th=Math.PI*i/lat;for(let j=0;j<=lon;j++){let ph=TAU*j/lon;let v=[Math.sin(th)*Math.cos(ph),Math.cos(th),Math.sin(th)*Math.sin(ph)];p.push(...v);n.push(...v)}}for(let i=0;i<lat;i++)for(let j=0;j<lon;j++){let a=i*(lon+1)+j,b=a+lon+1;idx.push(a,a+1,b,b,a+1,b+1)}return meshData(p,n,idx)}
 function cylinderMesh(sides=18){let p=[],n=[],idx=[];for(let i=0;i<=sides;i++){let a=TAU*i/sides,x=Math.cos(a)*.5,z=Math.sin(a)*.5;for(let y of [-.5,.5]){p.push(x,y,z);n.push(x*2,0,z*2)}}for(let i=0;i<sides;i++){let a=2*i,b=a+2;idx.push(a,a+1,b,b,a+1,b+1)}let b=p.length/3;p.push(0,.5,0);n.push(0,1,0);for(let i=0;i<=sides;i++){let a=TAU*i/sides;p.push(.5*Math.cos(a),.5,.5*Math.sin(a));n.push(0,1,0)}for(let i=0;i<sides;i++)idx.push(b,b+2+i,b+1+i);b=p.length/3;p.push(0,-.5,0);n.push(0,-1,0);for(let i=0;i<=sides;i++){let a=TAU*i/sides;p.push(.5*Math.cos(a),-.5,.5*Math.sin(a));n.push(0,-1,0)}for(let i=0;i<sides;i++)idx.push(b,b+1+i,b+2+i);return meshData(p,n,idx)}
 function torusMesh(around=32,tube=10){let p=[],n=[],idx=[];for(let i=0;i<=around;i++)for(let j=0;j<=tube;j++){let a=TAU*i/around,b=TAU*j/tube,rad=1+.12*Math.cos(b);p.push(rad*Math.cos(a),.12*Math.sin(b),rad*Math.sin(a));n.push(Math.cos(a)*Math.cos(b),Math.sin(b),Math.sin(a)*Math.cos(b))}for(let i=0;i<around;i++)for(let j=0;j<tube;j++){let a=i*(tube+1)+j,b=a+tube+1;idx.push(a,a+1,b,b,a+1,b+1)}return meshData(p,n,idx)}
-const themes={pegboard:{track:'#288fa8',rail:'#75dce2',trim:'#ffc978',peg:'#fa9f7a',floor:'#143149',sky:[.035,.085,.15]},funnel:{track:'#378aca',rail:'#79e9fe',trim:'#ffcb64',peg:'#df7cff',floor:'#153355',sky:[.036,.077,.15]},factory:{track:'#707d91',rail:'#edc36d',trim:'#ec9069',peg:'#fd8b5a',floor:'#253143',sky:[.06,.075,.11]},cosmic:{track:'#5157bd',rail:'#b86bff',trim:'#4fffe0',peg:'#ec7bfe',floor:'#1a2155',sky:[.06,.03,.14]}};
+const themes={
+pegboard:{track:'#a4714d',rail:'#f3c58e',trim:'#fff1af',peg:'#f18556',floor:'#563d36',sky:[.09,.095,.16]},
+funnel:{track:'#378aca',rail:'#79e9fe',trim:'#ffcb64',peg:'#df7cff',floor:'#153355',sky:[.036,.077,.15]},
+factory:{track:'#707d91',rail:'#edc36d',trim:'#ec9069',peg:'#fd8b5a',floor:'#253143',sky:[.06,.075,.11]},
+cosmic:{track:'#5157bd',rail:'#b86bff',trim:'#4fffe0',peg:'#ec7bfe',floor:'#1a2155',sky:[.06,.03,.14]},
+jungle:{track:'#376d50',rail:'#85dd8c',trim:'#ffd268',peg:'#e79c58',floor:'#183a31',sky:[.027,.10,.083]},
+glacier:{track:'#66aeca',rail:'#dcf7ff',trim:'#9ff9f7',peg:'#abdde7',floor:'#244f69',sky:[.038,.09,.15]},
+volcano:{track:'#593940',rail:'#ff9954',trim:'#ffe064',peg:'#ff684b',floor:'#281e2c',sky:[.13,.042,.052]},
+reef:{track:'#2c8c96',rail:'#90e6e1',trim:'#efbbd7',peg:'#ff9c93',floor:'#124456',sky:[.022,.09,.14]},
+pachinko:{track:'#31456f',rail:'#ffc779',trim:'#fff0ae',peg:'#fcae61',floor:'#1b2545',sky:[.065,.052,.13]}
+};
 function rgb(hex){let s=hex.replace('#','');return [parseInt(s.slice(0,2),16)/255,parseInt(s.slice(2,4),16)/255,parseInt(s.slice(4,6),16)/255]}
 class Renderer{
 constructor(canvas){this.canvas=canvas;const gl=canvas.getContext('webgl',{antialias:true,alpha:false,depth:true,preserveDrawingBuffer:false,powerPreference:'high-performance'});if(!gl)throw Error('WebGL is unavailable. Try Safari or Chrome with hardware acceleration.');this.gl=gl;this.init();this.cam=[21,30,-28];this.camTarget=[0,8,16];this.cameraMode='auto';this.focusId=null;this.orbitAngle=.63;this.pitch=.66;this.zoom=1;this.frame=0;this.world=null;this.lastVP=identity();this.marbleMeshes=[];this.pointers=new Map();this.dragged=false;this.bindPointer()}
@@ -50,7 +60,84 @@ render(world,delta,home=false){if(!world)return;this.resize();this.updateCamera(
 // Downhill track, full 3D guardrails, lane markings and structural supports.
 for(let z=seg/2;z<L+seg/2;z+=seg){let actualL=Math.min(seg,L-(z-seg/2));if(actualL<=0)break;let mid=z-seg/2+actualL/2,y=world.floorY(mid);this.box(0,y-.32,mid,w*2+.7,.65,actualL+.06,t.floor,0,tilt);this.box(0,y+.045,mid,w*2,.12,actualL,t.track,0,tilt);for(let side of [-1,1]){this.box(side*(w+.18),y+.72,mid,.36,1.35,actualL+.08,t.rail,0,tilt);this.box(side*(w+.08),y+1.35,mid,.4,.15,actualL+.08,t.trim,0,tilt,0,.12)}this.box(0,y+.117,mid,.11,.025,actualL,t.trim,0,tilt);if(Math.floor(mid/seg)%2===0)for(let sx of [-w*.5,w*.5])this.box(sx,y+.11,mid,.07,.03,actualL,t.rail,0,tilt)}
 for(let z=12;z<L;z+=26){let y=world.floorY(z)-4.5;for(let x of [-w+.8,w-.8])this.box(x,y,z,.62,8.8,.7,'#566477');this.box(0,y-4.2,z,w*2+1,.5,.7,'#647589')}
-for(let o of world.obstacles){let y=world.floorY(o.z)+.7;if(o.type==='peg'){this.cylinder(o.x,y,o.z,o.r,.95,t.peg);this.sphere(o.x,y+.6,o.z,o.r*.89,t.trim,.5)}else if(o.type==='spinner'){this.cylinder(o.x,y-.05,o.z,.77,1.25,t.trim);let ang=world.time*o.speed+o.phase;this.box(o.x,y+.42,o.z,o.size,.72,.6,t.peg,-ang,0,0,.15);this.sphere(o.x,y+.45,o.z,.62,'#fff1bf',1)}else if(o.type==='gate'){let leftEnd=o.gap-o.open*.5,rightStart=o.gap+o.open*.5;let l=leftEnd+w,r=w-rightStart;if(l>0)this.box(-w+l/2,y+.25,o.z,l,.75,.8,t.peg);if(r>0)this.box(rightStart+r/2,y+.25,o.z,r,.75,.8,t.peg);this.box(o.gap,y+2.3,o.z,o.open+.8,.22,.48,t.trim,0,0,0,.35);for(let sx of [leftEnd,rightStart])this.box(sx,y+1.1,o.z,.22,2,.5,t.trim)}else if(o.type==='vortex'){this.torus(o.x,y-.42,o.z,o.r,t.trim,1);this.torus(o.x,y-.29,o.z,o.r*.68,t.peg,.25);this.cylinder(o.x,y-.3,o.z,.6,.21,t.trim)}else if(o.type==='booster'){for(let j=0;j<3;j++){let zz=o.z-1.8+j*1.8;this.box(o.x,world.floorY(zz)+.155,zz,Math.min(6.5,o.size),.05,.9,t.trim,0,tilt,0,.8)}}else if(o.type==='split'){for(let side of [-1,1])this.box(side*.9,y-.18,o.z+.4,2.7,.82,.6,t.peg,-side*.84);this.cylinder(0,y,o.z-.6,.55,.7,t.trim)}}
+// Scenic props sit outside the collision corridor. Every object inside the track has matching contact physics or is a floor decal.
+for(let z=20;z<L;z+=27){
+ let y=world.floorY(z),m=Math.floor(z/27);
+ if(world.theme==='pegboard'){
+  for(let side of [-1,1]){this.cylinder(side*(w+3.4),y+2.4,z,.42,5.3,'#9d6640');this.sphere(side*(w+3.4),y+5.5,z,1.05,m%2?'#ffd275':'#fa857f',1)}
+  this.box(0,y+5.2,z,w*2+1,.32,.42,'#ffe3a1',0,0,0,.12);
+ }else if(world.theme==='funnel'){
+  for(let side of [-1,1]){this.torus(side*(w+5),y+1.1,z,2.1,t.trim,.65);this.cylinder(side*(w+5),y-2,z,.26,5.8,t.rail)}
+ }else if(world.theme==='factory'){
+  for(let side of [-1,1]){let x=side*(w+4);this.cylinder(x,y+2.1,z,1.4,5.2,'#485361');this.torus(x,y+4.3,z,1.75,t.trim,.28);this.box(x,y+6,z,3.5,.25,3.5,'#bac3cf')}
+ }else if(world.theme==='cosmic'){
+  for(let side of [-1,1]){let x=side*(w+4.5);this.cylinder(x,y+2.3,z,.7,6.2,t.rail);this.sphere(x,y+5.8,z,1.4,m%2?'#e78bfa':'#65f6df',1);this.torus(x,y+3.3,z,2.1,t.trim,1)}
+ }else if(world.theme==='jungle'){
+  for(let side of [-1,1]){let x=side*(w+4.1);this.cylinder(x,y+2.1,z,.55,5.4,'#7e513b');for(let j=0;j<3;j++)this.sphere(x+(j-1)*1.8,y+5.4-(j%2)*.5,z+(j-1)*1.3,2.15,j%2?'#8fe78b':'#3bb879',.35)}
+ }else if(world.theme==='glacier'){
+  for(let side of [-1,1]){let x=side*(w+4.1);this.box(x,y+2.4,z,2.3,5.5,2,t.rail,0,0,side*.21,.15);this.box(x+side*1.6,y+1.25,z+1.6,1.1,3.5,1.1,t.trim,0,0,side*.25,.2)}
+ }else if(world.theme==='volcano'){
+  for(let side of [-1,1]){let x=side*(w+4.2);this.cylinder(x,y+1.5,z,2.1,4.6,'#553a43');this.sphere(x,y+4.2,z,1.6,m%2?'#ff8b35':'#ff4e32',1);this.sphere(x+side*.8,y+5.65,z-.5,.58,'#ffe07b',1)}
+ }else if(world.theme==='reef'){
+  for(let side of [-1,1]){let x=side*(w+4.3);this.cylinder(x,y+1,z,1.2,3.4,'#f2888c');for(let j=0;j<3;j++){this.sphere(x+(j-1)*1.15,y+2.3+j*.6,z+j*.8,.75,j%2?'#ffe3b2':'#ffb2cc',.7);this.sphere(x+side*(j+1)*.7,y+5+j*.9,z+1,.32,'#a7fff3',1)}}
+ }else if(world.theme==='pachinko'){
+  for(let side of [-1,1]){this.cylinder(side*(w+2),y+1.4,z,.65,4.2,'#fbb863');this.sphere(side*(w+2),y+3.7,z,.85,m%2?'#ffe9ad':'#fc85b0',1)}
+  if(m%2===0)this.box(0,y+4.25,z,w*2+1,.36,.5,t.trim,0,0,0,.2);
+ }
+}
+for(let o of world.obstacles){
+ let y=world.floorY(o.z)+.7;
+ if(o.type==='peg'){
+  this.cylinder(o.x,y,o.z,o.r,.95,t.peg);
+  this.sphere(o.x,y+.6,o.z,o.r*.89,t.trim,.5);
+ }else if(o.type==='spinner'){
+  this.cylinder(o.x,y-.05,o.z,.77,1.25,t.trim);
+  let angle=world.time*o.speed+o.phase;
+  this.box(o.x,y+.42,o.z,o.size,.72,.6,t.peg,-angle,0,0,.15);
+  this.sphere(o.x,y+.45,o.z,.62,'#fff1bf',1);
+ }else if(o.type==='gate'){
+  let left=o.gap-o.open*.5,right=o.gap+o.open*.5,a=left+w,b=w-right;
+  if(a>0)this.box(-w+a/2,y+.25,o.z,a,.75,.8,t.peg);
+  if(b>0)this.box(right+b/2,y+.25,o.z,b,.75,.8,t.peg);
+  this.box(o.gap,y+2.3,o.z,o.open+.8,.22,.48,t.trim,0,0,0,.35);
+  for(let x of [left,right])this.box(x,y+1.1,o.z,.22,2,.5,t.trim);
+ }else if(o.type==='vortex'){
+  // Only the outer torus is raised; its radius and tube match ringCollision.
+  this.torus(o.x,y-.42,o.z,o.r,t.trim,1);
+  this.cylinder(o.x,y-.53,o.z,o.r*.78,.04,t.track);
+  this.cylinder(o.x,y-.3,o.z,.6,.21,t.trim);
+ }else if(o.type==='booster'){
+  for(let j=0;j<3;j++){let zz=o.z-1.8+j*1.8;this.box(o.x,world.floorY(zz)+.155,zz,Math.min(6.5,o.size),.05,.9,t.trim,0,tilt,0,.8)}
+ }else if(o.type==='split'){
+  for(let side of [-1,1])this.box(side*.9,y-.18,o.z+.4,2.7,.82,.6,t.peg,-side*.84);
+  this.cylinder(0,y,o.z-.6,.55,.7,t.trim);
+ }else if(o.type==='bumper'){
+  this.cylinder(o.x,y+.1,o.z,o.r,1.3,t.peg);
+  this.sphere(o.x,y+.85,o.z,o.r*.8,t.trim,1);
+  this.torus(o.x,y-.45,o.z,o.r*.96,t.rail,.45);
+ }else if(o.type==='spring'){
+  this.cylinder(o.x,y+.12,o.z,o.r,1.1,t.peg);
+  this.torus(o.x,y+.35,o.z,o.r*.94,t.trim,1);
+  this.sphere(o.x,y+1.0,o.z,o.r*.75,'#fff0b9',1);
+ }else if(o.type==='magnet'){
+  // The lit panel indicates a force zone; its raised center post collides.
+  this.box(o.x,world.floorY(o.z)+.15,o.z,Math.min(o.r*2,7),.04,5.2,t.track,0,tilt,0,.3);
+  this.cylinder(o.x,y,o.z,.65,1.1,t.peg);
+  this.sphere(o.x,y+.8,o.z,.55,t.trim,1);
+  for(let side of [-1,1])this.sphere(o.x+side*2.5,y+2.6,o.z,.3,t.trim,1);
+ }else if(o.type==='ice'){
+  // Flush floor decal, with reduced horizontal drag in tick().
+  this.box(o.x,world.floorY(o.z)+.155,o.z,Math.min(o.size,7.2),.04,5.4,'#c8ffff',0,tilt,0,.3);
+  for(let side of [-1,1])this.box(o.x+side*2,y-.49,o.z,.11,.04,4,t.trim,0,tilt,0,.45);
+ }
+}
+if(world.mode==='pachinko'){
+ let scoreColors=['#56a7f8','#93e4d5','#fed27c','#ffe88e','#fed27c','#93e4d5','#56a7f8'];
+ for(let i=0;i<7;i++){
+  let x=-w+(i+.5)*w*2/7,z=world.length-5;
+  this.box(x,world.floorY(z)+.16,z,w*2/7-.12,.035,5.9,scoreColors[i],0,tilt,0,i===3?.3:.06);
+ }
+}
 // Finish checkerboard + raised arch.
 const fz=L-1;for(let a=0;a<14;a++)for(let b=0;b<2;b++){let x=-w+(a+.5)*(2*w/14),z=fz+(b-.5)*.92;this.box(x,world.floorY(z)+.155,z,2*w/14,.05,.49,(a+b)%2===0?'#f8f9ff':'#182638',0,tilt)}for(let s of [-1,1])this.box(s*w,world.floorY(fz)+2,fz,.42,4.3,.48,t.trim);this.box(0,world.floorY(fz)+4.25,fz,w*2+.6,.58,.5,t.trim);
 // All marbles have the same physical radius; skins are purely cosmetic.
