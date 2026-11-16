@@ -4,9 +4,38 @@ A shared-screen, arcade-style **3D marble racing game** built for mobile Safari,
 
 ### ▶️ Play
 
-**[Play Marble Rush 3D](https://m0998001.github.io/marble-rush/?v=6)**
+**[Play Marble Rush 3D](https://m0998001.github.io/marble-rush/?v=7)**
 
 No account or installation required. Each visitor plays a local session on their own device; the link does not connect friends into one online race.
+
+## v0.6 — Custom marble colors and patterned rewards
+
+- **Colors are always free.** On the **Choose your marbles** screen, each of the six players has their own color picker and eight one-tap preset colors. Pattern and color are chosen independently.
+- **14 cosmetic finishes**, ranging from free Classic Glass and Velocity Stripes to premium Inferno Blaze, Dragon Scales, Stormbreaker, Galaxy, Checker, Tiger and Pixel patterns. All patterns are drawn on the marbles themselves during the 3D race, not just shown in menus.
+- **Marble Market preview:** Change the global preview color to compare how every pattern looks with the same color before buying. Buy patterns using earned coins.
+- **Previously purchased marble finishes remain unlocked** (the existing `chrome`, `gold`, `opal`, `neon`, and `galaxy` IDs are retained), along with existing coin balances. Both starter finishes are unlocked automatically for returning players.
+- **Player choices persist** locally: six players' last chosen colors and patterns are saved in the browser.
+- **Cosmetics never affect performance.** Marbles retain identical racing collision and movement behavior regardless of finish or color.
+- **WebGL fallback:** On devices that reject the richer material shader, the game falls back to classic colored marbles so the race can still run.
+
+### Pattern prices
+
+| Pattern | Cost (coins) | Appearance |
+| --- | ---: | --- |
+| Classic Glass | Free | Clean glass; any selected color |
+| Velocity Stripes | Free | Wide racing ribbons |
+| Chrome Circuit | 100 | Metallic circuit grid |
+| Finish Line | 220 | Checkerboard |
+| Golden Champion | 250 | Gold victory chevrons |
+| Pixel Pop | 280 | Bright digital mosaic |
+| Candy Vortex | 320 | Spiraling candy stripes |
+| Neon Pulse | 350 | Electric pulse tracks |
+| Opal Nebula | 400 | Organic pearlescent clouds |
+| Wild Tiger | 450 | Animal stripes |
+| Starfield Galaxy | 500 | Nebula and starfield |
+| Inferno Blaze | 650 | Flame ribbons |
+| Stormbreaker | 750 | Lightning cracks |
+| Dragon Scales | 950 | Shimmering scale tiles |
 
 ## v0.5 — Home Screen icons and Pachinko as a stage
 
@@ -69,7 +98,7 @@ Pachinko Palace is a free **stage** in the course picker, available under Free f
 
 ## Controls
 
-Use **Start Racing**, choose a mode and 2–6 players, customize marbles, then preview or regenerate the course. During the race, drag the screen to orbit the camera, pinch/scroll to zoom, or tap a leaderboard name to follow a marble.
+Use **Start Racing**, choose a mode and 2–6 players, enter names, **pick one color per player** (presets or full color picker), choose each player's unlocked pattern, then preview or regenerate the course. During the race, drag the screen to orbit the camera, pinch/scroll to zoom, or tap a leaderboard name to follow a marble.
 
 Marble cosmetics never affect racing performance. Earnable coins, unlocks and results are stored locally in the browser on that device; clearing site storage may erase them.
 
