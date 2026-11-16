@@ -25,6 +25,10 @@
 @media(max-width:530px){.color-picker-row{gap:6px}.player-controls .color-choice{width:19px;height:19px}.player-controls input[type=color]{width:35px;height:28px;min-width:35px}}
 .shop-preview-picker{display:inline-flex;align-items:center;gap:7px;font-size:10px;letter-spacing:.3px;font-weight:800;color:#c6f1fc;background:#102d45;padding:6px 9px;border-radius:9px;white-space:nowrap}
 .shop-preview-picker input[type=color]{width:34px;height:28px;background:transparent;border:1px solid #5a97aa;border-radius:6px;cursor:pointer;padding:1px}
+
+#scene{z-index:0}
+#pachinko-sideview{position:fixed;inset:0;width:100%;height:100%;display:none;z-index:1;pointer-events:none;background:#061326}
+#overlay,#app{z-index:2}
 </style></head><body><canvas id="scene" aria-label="3D marble racing arena"></canvas><div id="overlay"><div id="hud" class="hud hidden"></div></div><main id="app"></main><script>
 /* Marble Rush 3D — original, dependency-free WebGL 1 renderer */
 (function(){
@@ -223,7 +227,17 @@ setMode(mode,id=null){this.cameraMode=mode;this.focusId=id}
 bindPointer(){let c=this.canvas;this.pinchDistance=0;c.addEventListener('pointerdown',e=>{this.pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});try{c.setPointerCapture(e.pointerId)}catch(err){}if(this.pointers.size===2){let pts=[...this.pointers.values()];this.pinchDistance=Math.hypot(pts[0].x-pts[1].x,pts[0].y-pts[1].y)}});c.addEventListener('pointermove',e=>{let p=this.pointers.get(e.pointerId);if(!p)return;let dx=e.clientX-p.x,dy=e.clientY-p.y;this.pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});if(this.pointers.size>=2){let pts=[...this.pointers.values()],distance=Math.hypot(pts[0].x-pts[1].x,pts[0].y-pts[1].y);if(this.pinchDistance>0&&distance>1)this.zoom=clamp(this.zoom*this.pinchDistance/distance,.55,2.25);this.pinchDistance=distance;return}if(Math.abs(dx)+Math.abs(dy)>.1){this.cameraMode='orbit';this.orbitAngle=clamp(this.orbitAngle+dx*.007,-1.65,1.65);this.pitch=clamp(this.pitch+dy*.005,.24,1.32)}});for(let ev of ['pointerup','pointercancel'])c.addEventListener(ev,e=>{this.pointers.delete(e.pointerId);this.pinchDistance=0});c.addEventListener('wheel',e=>{this.zoom=clamp(this.zoom+e.deltaY*.001,.55,2.25);e.preventDefault()},{passive:false})}
 updateCamera(world,dt,home){let alive=world.marbles.filter(b=>!b.finished),ordered=[...alive].sort((a,b)=>b.z-a.z);let target=ordered[Math.floor(Math.max(0,ordered.length-1)*.46)]||world.marbles[0];if(this.focusId!==null){let f=world.marbles.find(b=>b.id===this.focusId);if(f&&!f.finished)target=f}let tz=home?Math.min(42,world.length*.38):target?clamp(target.z+10,4,world.length+5):32;this.viewZ=tz;let tx=target&&!home&&this.focusId!==null?target.x*.5:0;let wp=world.toWorld(tx,tz),lead=world.toWorld(tx,tz+8);let fy=world.floorY(tz);let cy=fy+1.3;let horizontal=(home?39:29)*this.zoom,vertical=(home?38:24)*this.zoom;let ang=this.cameraMode==='orbit'?this.orbitAngle:.58;let pitch=this.cameraMode==='orbit'?this.pitch:.76;let desired=[wp[0]+Math.sin(ang)*horizontal,cy+Math.sin(pitch)*vertical,wp[1]-Math.cos(ang)*horizontal];let aim=[lead[0],cy,lead[1]];let k=clamp(dt*(home?1.0:3),0,1);for(let i=0;i<3;i++){this.cam[i]+=(desired[i]-this.cam[i])*k;this.camTarget[i]+=(aim[i]-this.camTarget[i])*k}}
 project(pos){let m=this.lastVP,v=[pos[0],pos[1],pos[2],1],a=[];for(let r=0;r<4;r++)a[r]=m[r]*v[0]+m[4+r]*v[1]+m[8+r]*v[2]+m[12+r]*v[3];if(a[3]<=0)return null;let x=(a[0]/a[3]*.5+.5)*this.canvas.clientWidth,y=(1-(a[1]/a[3]*.5+.5))*this.canvas.clientHeight;return {x,y,visible:a[2]/a[3]<1}}
-render(world,delta,home=false){if(!world)return;this.drawPath=world;this.resize();this.updateCamera(world,delta,home);let gl=this.gl,t=themes[world.theme]||themes.pegboard;gl.clearColor(...t.sky,1);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);let proj=perspective(Math.PI/3,gl.canvas.width/gl.canvas.height,.3,490),v=lookAt(this.cam,this.camTarget);this.lastVP=mm(proj,v);gl.useProgram(this.program);gl.uniformMatrix4fv(this.uniform.vp,false,this.lastVP);gl.uniform3fv(this.uniform.cam,this.cam);gl.uniform3fv(this.uniform.fog,t.sky);let tilt=Math.atan(.24),L=world.length,w=world.width,seg=4.5,focusZ=this.viewZ??42,lo=home?0:Math.max(0,focusZ-78),hi=home?Math.min(L,155):Math.min(L,focusZ+94);
+render(world,delta,home=false){if(!world)return;
+ if(world.mode==='pachinko'){
+  if(!this.pachinkoView)this.pachinkoView=new PachinkoSideView();
+  if(this.pachinkoView.render(world,delta,home,this.focusId,!!this.pachinkoOverview)){
+   this.canvas.style.visibility='hidden';
+   return;
+  }
+ }
+ this.canvas.style.visibility='visible';
+ if(this.pachinkoView)this.pachinkoView.hide();
+ this.drawPath=world;this.resize();this.updateCamera(world,delta,home);let gl=this.gl,t=themes[world.theme]||themes.pegboard;gl.clearColor(...t.sky,1);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);let proj=perspective(Math.PI/3,gl.canvas.width/gl.canvas.height,.3,490),v=lookAt(this.cam,this.camTarget);this.lastVP=mm(proj,v);gl.useProgram(this.program);gl.uniformMatrix4fv(this.uniform.vp,false,this.lastVP);gl.uniform3fv(this.uniform.cam,this.cam);gl.uniform3fv(this.uniform.fog,t.sky);let tilt=Math.atan(.24),L=world.length,w=world.width,seg=4.5,focusZ=this.viewZ??42,lo=home?0:Math.max(0,focusZ-78),hi=home?Math.min(L,155):Math.min(L,focusZ+94);
 // One continuous, swept road and edge system shared by every theme.
 // No overlapping straight boxes or yaw/pitch approximations of a curved deck.
 this.ensureTrack(world,t);
@@ -364,7 +378,136 @@ const fz=L-1;for(let a=0;a<14;a++)for(let b=0;b<2;b++){let x=-w+(a+.5)*(2*w/14),
 // All marbles have the same physical radius; skins are purely cosmetic.
 for(let b of world.marbles){if(b.z<lo-12||b.z>hi+12)continue;let jump=b.air>0&&b.airDuration?Math.sin(Math.PI*(1-b.air/b.airDuration))*3.15:0;let y=world.floorY(b.z)+b.r+.19+b.bounce+jump;this.sphere(b.x,y,b.z,b.r,b.color,1,b.pattern||0,b.accent||'#ffffff',b.z*.16+b.id*.57);if(!b.finished&&[5,6,7,12].includes(b.pattern)){this.sphere(b.x,y-.18,b.z-.85,.14,b.accent||'#ffffff',1)}}this.frame++}
 }
-window.MarbleRenderer=Renderer;window.MarblePalette=themes;
+
+/* A dedicated, traditional upright 2D pachinko cabinet. The simulation stays
+   unchanged: physical course x maps to horizontal screen x, and progress z
+   maps directly to vertical screen y. No orbit perspective or 3D slope. */
+class PachinkoSideView{
+ constructor(){
+  this.canvas=document.createElement('canvas');
+  this.canvas.id='pachinko-sideview';
+  this.canvas.setAttribute('aria-label','Front view of the vertical Pachinko board');
+  document.body.appendChild(this.canvas);
+  this.ctx=this.canvas.getContext('2d',{alpha:false});
+  this.world=null;this.followZ=19;this.lastScale=0;
+ }
+ hide(){this.canvas.style.display='none'}
+ ball(ctx,b,x,y,r){
+  const accent=b.accent||'#ffffff',p=b.pattern||0;
+  ctx.save();
+  ctx.shadowColor='#000b19';ctx.shadowBlur=r*.9;ctx.shadowOffsetY=r*.3;
+  const grad=ctx.createRadialGradient(x-r*.34,y-r*.42,r*.05,x,y,r);
+  grad.addColorStop(0,'#f7feff');grad.addColorStop(.19,b.color);grad.addColorStop(.73,b.color);grad.addColorStop(1,'#07172e');
+  ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fillStyle=grad;ctx.fill();
+  ctx.shadowBlur=0;ctx.shadowOffsetY=0;
+  ctx.beginPath();ctx.arc(x,y,r*.95,0,Math.PI*2);ctx.clip();
+  ctx.translate(x,y);ctx.rotate(b.z*.16+b.id*.57);
+  ctx.strokeStyle=accent;ctx.fillStyle=accent;ctx.globalAlpha=.83;ctx.lineCap='round';
+  const line=(a,b,c,d,w)=>{ctx.beginPath();ctx.moveTo(a,b);ctx.lineTo(c,d);ctx.lineWidth=w;ctx.stroke()};
+  if(p===1||p===10){for(let k=-2;k<=2;k++)line(-r*1.25,k*r*.62-r*.3,r*1.2,k*r*.62+r*.75,r*(p===1?.23:.21))}
+  else if(p===2){for(let k=-2;k<=2;k++){line(k*r*.45,-r,k*r*.45,r,r*.08);line(-r,k*r*.45,r,k*r*.45,r*.08)}}
+  else if(p===3){for(let k=-1;k<=1;k++){line(-r,k*r*.6,0,(k+.32)*r*.6,r*.17);line(0,(k+.32)*r*.6,r,k*r*.6,r*.17)}}
+  else if(p===4){for(let k=0;k<5;k++){ctx.beginPath();ctx.ellipse((k%3-1)*r*.45,(k-2)*r*.30,r*.45,r*.22,k*.55,0,Math.PI*2);ctx.fill()}}
+  else if(p===5||p===12){ctx.lineWidth=r*.17;for(let k=-2;k<=2;k++){ctx.beginPath();ctx.moveTo(-r,k*r*.38);ctx.lineTo(-r*.2,(k-.32)*r*.38);ctx.lineTo(r*.3,(k+.28)*r*.38);ctx.lineTo(r,(k-.2)*r*.38);ctx.stroke()}}
+  else if(p===6){ctx.globalAlpha=.6;ctx.beginPath();ctx.ellipse(0,0,r*1.1,r*.3,-.6,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1;for(let k=0;k<12;k++){let a=k*2.399,radius=r*.84*Math.sqrt((k+.5)/12);ctx.fillRect(Math.cos(a)*radius,Math.sin(a)*radius,r*.1,r*.1)}}
+  else if(p===7){for(let k=-3;k<=3;k++){ctx.beginPath();ctx.moveTo(k*r*.45,r);ctx.quadraticCurveTo(k*r*.41-r*.15,0,k*r*.48,-r);ctx.quadraticCurveTo(k*r*.51+r*.20,-r*.18,(k+.7)*r*.45,r);ctx.fill()}}
+  else if(p===8||p===13){let cell=r*(p===8?.44:.30);for(let i=-5;i<5;i++)for(let j=-5;j<5;j++)if((i+j)%2===0)ctx.fillRect(i*cell,j*cell,cell,cell)}
+  else if(p===9){for(let k=-3;k<=3;k++){ctx.beginPath();ctx.moveTo(k*r*.4,-r);ctx.lineTo(k*r*.37+r*.25,-r*.3);ctx.lineTo(k*r*.39-r*.18,r*.3);ctx.lineTo(k*r*.4,r);ctx.lineWidth=r*.22;ctx.stroke()}}
+  else if(p===11){ctx.lineWidth=r*.13;for(let row=-3;row<4;row++)for(let col=-3;col<4;col++){ctx.beginPath();ctx.arc((col+(row%2)*.5)*r*.46,row*r*.40,r*.28,0,Math.PI);ctx.stroke()}}
+  ctx.globalAlpha=1;ctx.restore();
+  ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.strokeStyle='#d9f6ffac';ctx.lineWidth=Math.max(1,r*.11);ctx.stroke();
+  ctx.beginPath();ctx.ellipse(x-r*.35,y-r*.38,r*.20,r*.12,-.65,0,Math.PI*2);ctx.fillStyle='#ffffffe6';ctx.fill();
+  ctx.beginPath();ctx.arc(x,y,r*.35,0,Math.PI*2);ctx.fillStyle='#06182bd1';ctx.fill();
+  ctx.fillStyle='#ffffff';ctx.font='800 '+Math.max(9,Math.floor(r*.5))+'px system-ui';
+  ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(String(b.id+1),x,y+.5);
+ }
+ render(world,dt,home,focusId,overview){
+  if(!this.ctx)return false;
+  this.canvas.style.display='block';
+  const W=this.canvas.clientWidth||window.innerWidth||390,H=this.canvas.clientHeight||window.innerHeight||800;
+  const dpr=Math.min(window.devicePixelRatio||1,1.8);
+  const rw=Math.max(1,Math.round(W*dpr)),rh=Math.max(1,Math.round(H*dpr));
+  if(this.canvas.width!==rw||this.canvas.height!==rh){this.canvas.width=rw;this.canvas.height=rh}
+  const ctx=this.ctx;ctx.setTransform(dpr,0,0,dpr,0,0);
+  const bg=ctx.createLinearGradient(0,0,W,H);
+  bg.addColorStop(0,'#071a30');bg.addColorStop(.55,'#10152c');bg.addColorStop(1,'#061121');
+  ctx.fillStyle=bg;ctx.fillRect(0,0,W,H);
+  const top=Math.max(95,Math.min(140,H*.14)),bottom=Math.max(150,Math.min(280,H*.30));
+  const centerY=(top+H-bottom)*.5,cx=W*.5,half=world.width;
+  const baseScale=Math.min((W-36)/(half*2+3),Math.max(7,(H-bottom-top)/34));
+  const active=world.marbles.filter(b=>!b.finished),positions=active.map(b=>b.z).sort((a,b)=>a-b);
+  let goal;
+  if(home){goal=19}else if(focusId!==null&&active.some(b=>b.id===focusId)){goal=active.find(b=>b.id===focusId).z+6}
+  else if(positions.length){goal=(positions[0]+positions[positions.length-1])*.5+6}
+  else goal=world.length-10;
+  goal=Math.min(world.length-9,Math.max(19,goal));
+  if(this.world!==world){this.world=world;this.followZ=19}
+  const blend=Math.min(1,Math.max(.02,dt*3.6));
+  this.followZ+=(goal-this.followZ)*blend;
+  let scale=baseScale;
+  if(overview)scale=Math.min((W-28)/(2*half+3),(H-bottom-top-16)/(world.length+3));
+  else if(positions.length>1)scale=Math.min(scale,(H-bottom-top)/Math.max(30,positions[positions.length-1]-positions[0]+16));
+  scale=Math.max(1.6,scale);
+  this.lastScale=scale;
+  const sy=z=>centerY+(z-(overview?world.length*.5:this.followZ))*scale;
+  const sx=x=>cx+x*scale;
+  const left=sx(-half),right=sx(half),yTop=sy(0),yEnd=sy(world.length);
+  // Cabinet frame and a real vertical playing surface bounded by side rails.
+  ctx.save();ctx.shadowColor='#36e6ef77';ctx.shadowBlur=22;
+  ctx.fillStyle='#091b32';ctx.fillRect(left-13,yTop-8,right-left+26,yEnd-yTop+20);
+  ctx.restore();
+  ctx.save();ctx.beginPath();ctx.rect(left,yTop,right-left,yEnd-yTop+10);ctx.clip();
+  const field=ctx.createLinearGradient(left,0,right,0);
+  field.addColorStop(0,'#0c2e4b');field.addColorStop(.25,'#163e58');
+  field.addColorStop(.5,'#1a3850');field.addColorStop(.75,'#163e58');field.addColorStop(1,'#0c2e4b');
+  ctx.fillStyle=field;ctx.fillRect(left,yTop,right-left,yEnd-yTop+15);
+  ctx.strokeStyle='#9ff6ff14';ctx.lineWidth=1;
+  for(let z=Math.max(0,Math.floor((this.followZ-80)/10)*10);z<Math.min(world.length,this.followZ+90);z+=10){
+   let yy=sy(z);ctx.beginPath();ctx.moveTo(left,yy);ctx.lineTo(right,yy);ctx.stroke();
+  }
+  // Seven unmistakable scoring bins at the physical bottom of the board.
+  const slotColors=['#4d9ff1','#63d6cf','#f3c45b','#ffed9b','#f3c45b','#63d6cf','#4d9ff1'];
+  const slots=[100,250,500,1000,500,250,100];
+  let binStart=sy(world.length-9),bw=(right-left)/7;
+  for(let i=0;i<7;i++){
+   let x=left+i*bw;
+   ctx.fillStyle=slotColors[i]+'b3';ctx.fillRect(x,binStart,bw,yEnd-binStart+13);
+   ctx.strokeStyle='#f3ffff6b';ctx.lineWidth=1.1;ctx.strokeRect(x+.5,binStart+.5,bw-1,yEnd-binStart+12);
+   ctx.fillStyle=i===3?'#28263e':'#082b40';ctx.font='900 '+Math.max(8,Math.min(16,bw*.39))+'px system-ui';ctx.textAlign='center';
+   ctx.fillText(String(slots[i]),x+bw*.5,binStart+Math.min(24,(yEnd-binStart)*.42));
+  }
+  // Contact pegs: circular objects in an upright front-facing x/z plane.
+  for(const peg of world.obstacles){
+   if(peg.type!=='peg')continue;
+   const yy=sy(peg.z);if(yy<-28||yy>H+28)continue;
+   const x=sx(peg.x),r=Math.max(2.8,peg.r*scale);
+   ctx.beginPath();ctx.arc(x+1.5,yy+2.8,r*1.15,0,Math.PI*2);ctx.fillStyle='#041225aa';ctx.fill();
+   const metal=ctx.createRadialGradient(x-r*.4,yy-r*.47,0,x,yy,r*1.15);
+   metal.addColorStop(0,'#ffffe5');metal.addColorStop(.35,'#ffd38c');metal.addColorStop(.78,'#ba8354');metal.addColorStop(1,'#614267');
+   ctx.beginPath();ctx.arc(x,yy,r,0,Math.PI*2);ctx.fillStyle=metal;ctx.fill();
+   ctx.strokeStyle='#fff1cb77';ctx.lineWidth=Math.max(1,scale*.07);ctx.stroke();
+  }
+  // Launch lip visually marks the point where all balls enter the vertical board.
+  const lipY=sy(10);
+  if(lipY>0&&lipY<H){ctx.fillStyle='#e8bc7a';ctx.fillRect(left+6,lipY,right-left-12,3)}
+  for(const b of world.marbles){
+   const yy=sy(b.z);if(yy<-32||yy>H+32)continue;
+   this.ball(ctx,b,sx(b.x),yy,Math.max(3,b.r*scale*1.12));
+  }
+  ctx.restore();
+  // Tall side rails remain above marbles to frame the whole game.
+  ctx.strokeStyle='#77eaf4';ctx.lineWidth=Math.max(3,scale*.28);
+  ctx.beginPath();ctx.moveTo(left,yTop);ctx.lineTo(left,yEnd);ctx.moveTo(right,yTop);ctx.lineTo(right,yEnd);ctx.stroke();
+  ctx.strokeStyle='#ffe6a6';ctx.lineWidth=Math.max(1.3,scale*.10);
+  ctx.beginPath();ctx.moveTo(left-3,yTop);ctx.lineTo(left-3,yEnd);ctx.moveTo(right+3,yTop);ctx.lineTo(right+3,yEnd);ctx.stroke();
+  // Subtle fixed label makes the front-facing game mode immediately recognizable.
+  ctx.textAlign='center';ctx.fillStyle='#b3e5ef';ctx.font='800 11px system-ui';
+  ctx.fillText(overview?'FULL BOARD · FRONT VIEW':'FRONT VIEW · FOLLOWING THE DROP',W*.5,Math.max(95,top-12));
+  return true;
+ }
+}
+
+window.MarbleRenderer=Renderer;window.MarblePalette=themes;window.PachinkoSideView=PachinkoSideView;
 })();
 
 </script><script>
