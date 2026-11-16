@@ -4,9 +4,19 @@ A shared-screen, arcade-style **3D marble racing game** built for mobile Safari,
 
 ### ▶️ Play
 
-**[Play Marble Rush 3D](https://m0998001.github.io/marble-rush/?v=7)**
+**[Play Marble Rush 3D](https://m0998001.github.io/marble-rush/?v=8)**
 
 No account or installation required. Each visitor plays a local session on their own device; the link does not connect friends into one online race.
+
+## v0.7 — Traditional side-view Pachinko
+
+- **Only Pachinko Palace has a dedicated upright front-facing board.** Its physical x/y presentation (horizontal lane x and downward progress z) is rendered as a high-contrast 2D canvas, not a receding 3D track.
+- **Peg-and-slot cabinet:** Shaded metal pegs, illuminated side rails, a start lip, and seven colored scoring bins at the bottom of the board.
+- **Follow Drop** keeps the marbles readable as they descend a long board. Tap a racer in the live standings to follow that marble.
+- **Full Board** provides a whole-board overview. This view intentionally fits the long Pachinko board onto smaller screens, so balls appear smaller.
+- **3D races are unchanged:** Every other course retains the existing 3D perspective, orbit controls, camera, and custom marble materials.
+- **No scoring or economy changes:** Pachinko stays a free stage under Free for All and Teams, and cosmetic colors/patterns are represented in the board's 2D ball art.
+- **Testing:** 1,200 simulated races across all ten stages, lengths, and 2–6 players produced no unfinished marbles; Pachinko score values remained valid. UI, control, and side-view drawing smoke checks passed. Physical iPhone and iPad viewing still needs verification.
 
 ## v0.6 — Custom marble colors and patterned rewards
 
